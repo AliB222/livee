@@ -1,0 +1,406 @@
+* {
+    box-sizing: border-box;
+    padding: 0px;
+    margin: 0px;
+}
+
+#liveBox {
+    width: 550px;
+    margin:auto;
+    font-family: "Bebas Neue", Sans-serif !important;
+}
+
+.teams {
+    width: 100%;
+    height: 45px;
+    background: black;
+    float: left;
+}
+
+#teamsHead {
+    background: black;
+    width: 80%;
+    height: 45px;
+    float: right;
+}
+
+.headText {
+    height: 45px;
+    float: left;
+}
+
+.headText:nth-of-type(1) {
+    width: 25%;
+}
+
+.headText:nth-of-type(2) {
+    width: 32%;
+
+}
+
+.headText:nth-of-type(3),
+.headText:nth-of-type(4),
+.headText:nth-of-type(15) {
+    width: 15%;
+}
+
+.headText p {
+    color: white;
+    text-align: center;
+    line-height: 45px;
+    text-transform: uppercase;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0px 8px;
+}
+
+#teamsHead {
+    border-radius: 20px 20px 0px 0px;
+}
+
+.rank {
+    background: white;
+    width: 10%;
+    height: 50px;
+    text-align: center;
+    line-height: 45px;
+    font-size: 30px;
+    font-weight: bolder;
+    border-radius: 0px 0px 25px 0px;
+    float: left;
+}
+
+.logo {
+    background: black;
+    width: 10%;
+    height: 45px;
+    float: left;
+}
+
+.logo img {
+    object-fit: contain;
+    width: 100%;
+    height: 40px;
+}
+
+.name {
+    width: 20%;
+}
+
+.alive {
+    width: 25%;
+}
+
+.kills,
+.plc,
+.total {
+    width: 11.6666666%;
+}
+
+.name,
+.alive,
+.kills,
+.plc,
+.total {
+    float: left;
+    color: black;
+    font-size: 25px;
+    line-height: 45px;
+    text-align: center;
+    background: #cfcfcf;
+    border-top: 1px solid black;
+}
+
+.kills,
+.plc,
+.total {
+    font-size: 26px;
+    font-weight: bold;
+}
+
+.alive img {
+    width: 17%;
+    height: 35px;
+    float: left;
+    margin: 5px;
+}
+
+.animated {
+    overflow: hidden;
+    white-space: nowrap;
+
+}
+
+.animated>* {
+    position: relative;
+
+}
+/*
+.dead:after {
+    content: "Elimianted";
+    width: 100px;
+    height: 46px;
+    line-height: 50px;
+    position: absolute;
+    background: #df5a5a;
+    display: block;
+    margin-left: 138px;
+    text-align: center;
+    font-size: 25px;
+    animation-name: deads, op;
+    animation-duration: 1.5s, 1s;
+    animation-delay: 0ms, 3s;
+    animation-timing-function: ease-in, ease-out;
+    animation-fill-mode: forwards , forwards;
+}
+*/
+@keyframes deads {
+    0% {width: 100px;}
+    100% {width: 412px;}
+}
+@keyframes op {
+    0% {opacity: 1;}
+    100% {opacity: 0;}
+}
+@keyframes move {
+    0%,
+    25% {transform: translateX(0%);right: 0%;}
+    75%,
+    100% {transform: translateX(-100%);right: 100%;}
+}
+#info {
+    width: 100%;
+    height: 120px;
+    margin-bottom: 50px;
+}
+
+#info .infoImg {
+    width: 40%;
+    height: 120px;
+    background-image: linear-gradient(219deg, #00BBFF 0%, #F229EF 100%);
+    border-radius: 20px 0px 0px 0px;
+    text-align: center;
+    float: left;
+}
+
+#info .infoImg img {
+    object-fit: contain;
+    height: 120px;
+}
+
+#info .infoTxt {
+    width: 60%;
+    float: right;
+}
+
+#info .infoTxt p {
+    line-height: 60px;
+    height: 60px;
+    padding: 0px 10px;
+}
+
+#info .infoTxt p:nth-of-type(1) {
+    background: black;
+    color: white;
+    font-size: 26px;
+}
+
+#info .infoTxt p:nth-of-type(2) {
+    background: white;
+    font-size: 28px;
+    font-weight: bold;
+}
+.dead .name,
+.dead .alive,
+.dead .kills,
+.dead .plc,
+.dead .total {
+    background: #868686;
+}
+.pos-color{
+    content: "";
+    width: 8px;
+    height: 25px;
+    display: block;
+    position: relative;
+    top: -35px;
+    left: 52px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 14px 1px green !important;
+    background: green !important;
+    z-index: 1;
+}
+.infoTxt p {
+    letter-spacing: 2px;
+}
+
+#teamsHead .headText:nth-of-type(3) p,
+#teamsHead .headText:nth-of-type(4) {
+    padding-right: 10px !important;
+}
+.notActive .name,
+.notActive .alive,
+.notActive .kills,
+.notActive .plc,
+.notActive .total {
+    background: #eb8686;
+}
+.pos1 .logo:after {
+    box-shadow: 0px 0px 14px 1px #e16815 !important;
+    background: #e16815 !important;
+}
+
+.pos2 .logo:after {
+    box-shadow: 0px 0px 14px 1px #2593d0 !important;
+    background: #2593d0 !important;
+}
+
+.pos3 .logo:after {
+    box-shadow: 0px 0px 14px 1px #441386 !important;
+    background: #441386 !important;
+}
+
+.pos4 .logo:after {
+    box-shadow: 0px 0px 14px 1px #9f2d13 !important;
+    background: #9f2d13 !important;
+}
+
+.pos5 .logo:after {
+    box-shadow: 0px 0px 14px 1px #496c00 !important;
+    background: #496c00 !important;
+}
+
+.pos6 .logo:after {
+    box-shadow: 0px 0px 14px 1px #be1b54 !important;
+    background: #be1b54 !important;
+}
+
+.pos7 .logo:after {
+    box-shadow: 0px 0px 14px 1px #9b6421 !important;
+    background: #9b6421 !important;
+}
+
+.pos8 .logo:after {
+    box-shadow: 0px 0px 14px 1px #860148 !important;
+    background: #860148 !important;
+}
+
+.pos9 .logo:after {
+    box-shadow: 0px 0px 14px 1px #e4bb15 !important;
+    background: #e4bb15 !important;
+}
+
+.pos10 .logo:after {
+    box-shadow: 0px 0px 14px 1px #4db9b4 !important;
+    background: #4db9b4 !important;
+}
+
+.pos11 .logo:after {
+    box-shadow: 0px 0px 14px 1px #68838e !important;
+    background: #68838e !important;
+}
+
+.pos12 .logo:after {
+    box-shadow: 0px 0px 14px 1px #ec9b01 !important;
+    background: #ec9b01 !important;
+}
+
+.pos13 .logo:after {
+    box-shadow: 0px 0px 14px 1px #323f45 !important;
+    background: #323f45 !important;
+}
+
+.pos14 .logo:after {
+    box-shadow: 0px 0px 14px 1px #e4628e !important;
+    background: #e4628e !important;
+}
+
+.pos15 .logo:after {
+    box-shadow: 0px 0px 14px 1px #00746e !important;
+    background: #00746e !important;
+}
+
+.pos16 .logo:after {
+    box-shadow: 0px 0px 14px 1px #894b00 !important;
+    background: #894b00 !important;
+}
+
+.pos17 .logo:after {
+    box-shadow: 0px 0px 14px 1px #84b120 !important;
+    background: #84b120 !important;
+}
+
+.pos18 .logo:after {
+    box-shadow: 0px 0px 14px 1px #824b9e !important;
+    background: #824b9e !important;
+}
+
+.pos19 .logo:after {
+    box-shadow: 0px 0px 14px 1px #42b481 !important;
+    background: #42b481 !important;
+}
+
+.pos20 .logo:after {
+    box-shadow: 0px 0px 14px 1px #85a6dc !important;
+    background: #85a6dc !important;
+}
+
+.pos21 .logo:after {
+    box-shadow: 0px 0px 14px 1px #e38b67 !important;
+    background: #e38b67 !important;
+}
+
+.pos22 .logo:after {
+    box-shadow: 0px 0px 14px 1px #2a2464 !important;
+    background: #2a2464 !important;
+}
+
+.pos23 .logo:after {
+    box-shadow: 0px 0px 14px 1px #968d0a !important;
+    background: #968d0a !important;
+}
+
+.pos24 .logo:after {
+    box-shadow: 0px 0px 14px 1px #e16815 !important;
+    background: #e16815 !important;
+}
+
+.pos25 .logo:after {
+    box-shadow: 0px 0px 14px 1px #441386 !important;
+    background: #441386 !important;
+}
+
+.pos26 .logo:after {
+    box-shadow: 0px 0px 14px 1px #9f2d13 !important;
+    background: #9f2d13 !important;
+}
+
+.pos27 .logo:after {
+    box-shadow: 0px 0px 14px 1px #496c00 !important;
+    background: #496c00 !important;
+}
+
+.pos28 .logo:after {
+    box-shadow: 0px 0px 14px 1px #be1b54 !important;
+    background: #be1b54 !important;
+}
+
+.pos29 .logo:after {
+    box-shadow: 0px 0px 14px 1px #9b6421 !important;
+    background: #9b6421 !important;
+}
+
+.pos30 .logo:after {
+    box-shadow: 0px 0px 14px 1px #860148 !important;
+    background: #860148 !important;
+}
+
+.pos31 .logo:after {
+    box-shadow: 0px 0px 14px 1px #e4bb15 !important;
+    background: #e4bb15 !important;
+}
+
+.pos32 .logo:after {
+    box-shadow: 0px 0px 14px 1px #2593d0 !important;
+    background: #2593d0 !important;
+}
