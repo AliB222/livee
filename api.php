@@ -1,65 +1,51 @@
 <?php
+/**
+ * api.php - فقط از پنل جدید (livepoint_teams) می‌خواند
+ */
+
 require_once("../../../wp-load.php");
 
-$teams_array = array();
-    $pos = 0;
-    while (have_rows('teams', 'option')) : the_row();
-        $team_name = get_sub_field('team_name');
-        $team_logo = get_sub_field('team_logo');
-        $alive = get_sub_field('alive');
-        $KM1 = get_sub_field('KM1');
-        $KM2 = get_sub_field('KM2');
-        $KM3 = get_sub_field('KM3');
-        $KM4 = get_sub_field('KM4');
-        $KM5 = get_sub_field('KM5');
-        $PLC = get_sub_field('PLC');
-        $win = get_sub_field('win');
-        $bonus = get_sub_field('bonus');
-        $active = get_sub_field('active');
-        $pos_color = get_sub_field('pos-color');
-        $kills = $KM1 + $KM2 + $KM3 + $KM4 + $KM5;
-        $total = $kills + $PLC + $bonus;
-        $pos++;
-        
-        $team_data = array(
-            'name' => $team_name,
-            'logo' => $team_logo,
-            'alive' => $alive,
-            'KM1' => $KM1,
-            'KM2' => $KM2,
-            'KM3' => $KM3,
-            'KM4' => $KM4,
-            'KM5' => $KM5,
-            'kills' => $kills,
-            'plc' => $PLC,
-            'total' => $total,
-            'win' => $win,
-            'bonus' => $bonus,
-            'pos' => $pos,
-            'poscolor' => $pos_color,
-            'active' => $active
-        );
-        $teams_array[] = $team_data;
-    endwhile;
+header('Content-Type: application/json; charset=utf-8');
 
-   usort($teams_array, function ($a, $b) {
-        if ($a['total'] != $b['total']) {
-            return $b['total'] - $a['total'];
-        } elseif ($a['win'] != $b['win']) {
-            return $b['win'] - $a['win'];
-        } elseif ($a['plc'] != $b['plc']) {
-            return $b['plc'] - $a['plc'];
-        } else {
-            return $b['kills'] - $a['kills'];
-        }
-    });
-// اضافه کردن رنک به هر تیم
-foreach ($teams_array as $index => &$team) {
-  $team['rank'] = $index + 1; // اضافه کردن فیلد rank به هر تیم
+// ===== فقط از پنل جدید بخوان =====
+$teams_data = get_option('livepoint_teams', array());
+
+// ===== اگر هیچ داده‌ای نبود =====
+if (empty($teams_data)) {
+    echo json_encode(array('teams' => array()));
+    exit;
 }
-    // اطلاعات را به صورت JSON ارسال کنید
-header('Content-Type: application/json');
-header('Cache-Control: no-cache, no-store, must-revalidate');
-header('Pragma: no-cache');
-header('Expires: 0');
-echo json_encode(array('teams' => $teams_array), JSON_UNESCAPED_UNICODE);
+
+// ===== تبدیل به فرمت خروجی =====
+$output = array();
+$pos = 0;
+foreach ($teams_data as $t) {
+    $pos++;
+    $kills = intval($t['km1'] ?? 0) + intval($t['km2'] ?? 0) + 
+             intval($t['km3'] ?? 0) + intval($t['km4'] ?? 0) + 
+             intval($t['km5'] ?? 0);
+    $total = $kills + intval($t['plc'] ?? 0) + intval($t['bonus'] ?? 0);
+
+    $output[] = array(
+        'name'      => $t['name'] ?? 'بدون نام',
+        'logo'      => $t['logo'] ?? '',
+        'alive'     => intval($t['alive'] ?? 0),
+        'kills'     => $kills,
+        'plc'       => intval($t['plc'] ?? 0),
+        'total'     => $total,
+        'win'       => intval($t['win'] ?? 0),
+        'pos'       => $pos,
+        'poscolor'  => $t['color'] ?? '#ffffff',
+        'active'    => !empty($t['active']) ? 'true' : 'false',
+    );
+}
+
+// ===== مرتب‌سازی =====
+usort($output, function ($a, $b) {
+    if ($a['total'] != $b['total']) return $b['total'] - $a['total'];
+    if ($a['win'] != $b['win']) return $b['win'] - $a['win'];
+    if ($a['plc'] != $b['plc']) return $b['plc'] - $a['plc'];
+    return $b['kills'] - $a['kills'];
+});
+
+echo json_encode(array('teams' => $output), JSON_UNESCAPED_UNICODE);

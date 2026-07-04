@@ -98,3 +98,12 @@ function aa_ucs_save_acf_metabox_fields( $post_id ) {
 	update_option( 'example-text', $text );
 }
 add_action( 'acf/save_post', 'aa_ucs_save_acf_metabox_fields', 20 );
+
+if ( file_exists( plugin_dir_path( __FILE__ ) . 'livepoint-panel.php' ) ) {
+    include_once plugin_dir_path( __FILE__ ) . 'livepoint-panel.php';
+}
+
+
+if ( file_exists( plugin_dir_path( __FILE__ ) . 'lp-save-api.php' ) ) {
+    include_once plugin_dir_path( __FILE__ ) . 'lp-save-api.php';
+}
