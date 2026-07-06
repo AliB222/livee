@@ -55,22 +55,25 @@
     <div id="box"></div>
 
     <script>
-        const apiUrl = 'http://localhost/livepoint/wp-content/plugins/livePoint/api.php';
+        // ===== تنظیمات =====
+        const apiUrl = '/livepoint/wp-content/plugins/livePoint/api.php';
         const targetElement = document.getElementById("box");
-        const displayDuration = 3000;
-        const checkInterval = 1000;
+        const displayDuration = 3000; // ۳ ثانیه نمایش
+        const checkInterval = 1000; // هر ۱ ثانیه چک کن
         const STORAGE_KEY = '10kill_teams';
 
+        // ===== دریافت شماره مچ از URL =====
         const urlParams = new URLSearchParams(window.location.search);
         const match = urlParams.get('match') || '1';
-        const kmProperty = `KM${match}`;
+        const kmKey = `km${match}`; // مثلاً km1, km2, ...
 
         let teamQueue = [];
         let isDisplaying = false;
 
-        // ===== کلید ترکیبی: name + مقدار KM =====
+        // ===== بازیابی تیم‌های نمایش داده شده از localStorage =====
         let displayedTeamIds = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 
+        // ===== تابع نمایش تیم بعدی =====
         function displayNextTeam() {
             if (teamQueue.length > 0 && !isDisplaying) {
                 isDisplaying = true;
@@ -81,7 +84,7 @@
                         <img class="bg" src="bg.png" class="animate__animated animate__fadeIn">
                         <img style="background:${team.poscolor}" class="team-logo animate__animated animate__fadeIn" width="50px" src="${team.logo}" alt="${team.name}">
                         <p class="team-name animate__animated animate__fadeIn">${team.name}</p>
-                        <p class="kills animate__animated animate__fadeIn">${team[kmProperty]} kills</p>
+                        <p class="kills animate__animated animate__fadeIn">${team[kmKey]} kills</p>
                     </div>
                 `;
 
@@ -96,32 +99,34 @@
             }
         }
 
+        // ===== تابع اصلی چک کردن تیم‌های جدید =====
         function checkForNewTeams() {
-            fetch(apiUrl)
+            fetch(apiUrl + '?_=' + Date.now())
                 .then(response => response.json())
                 .then(data => {
                     const teams = data.teams || [];
 
-                    // ===== ۱. تیم‌هایی که به ۱۰ کشته رسیده‌اند =====
-                    const killTeams = teams.filter(team => parseInt(team[kmProperty]) > 9);
-
-                    // ===== ۲. حذف تیم‌هایی که دیگر ۱۰ کشته ندارند =====
-                    let changed = false;
-                    const currentKeys = killTeams.map(t => t.name + '_' + parseInt(t[kmProperty]));
-
-                    // حذف کلیدهای قدیمی که دیگر در لیست نیستند
-                    const newDisplayed = displayedTeamIds.filter(key => {
-                        return currentKeys.includes(key);
+                    // ===== فیلتر تیم‌هایی که در این مچ به ۱۰ کشته رسیده‌اند =====
+                    const killTeams = teams.filter(team => {
+                        const kmValue = parseInt(team[kmKey]) || 0;
+                        return kmValue > 9;
                     });
 
+                    // ===== کلیدهای ترکیبی جدید =====
+                    const currentKeys = killTeams.map(t => `${t.name}_${parseInt(t[kmKey])}`);
+
+                    // ===== حذف کلیدهایی که دیگر ۱۰ کشته ندارند =====
+                    const newDisplayed = displayedTeamIds.filter(key => currentKeys.includes(key));
+
+                    let changed = false;
                     if (newDisplayed.length !== displayedTeamIds.length) {
                         displayedTeamIds = newDisplayed;
                         changed = true;
                     }
 
-                    // ===== ۳. اضافه کردن تیم‌های جدید (با کلید ترکیبی) =====
+                    // ===== اضافه کردن تیم‌های جدید =====
                     killTeams.forEach(team => {
-                        const key = team.name + '_' + parseInt(team[kmProperty]);
+                        const key = `${team.name}_${parseInt(team[kmKey])}`;
                         if (!displayedTeamIds.includes(key)) {
                             displayedTeamIds.push(key);
                             teamQueue.push(team);
@@ -136,11 +141,11 @@
                     displayNextTeam();
                 })
                 .catch(error => {
-                    targetElement.style.display = "none";
-                    console.error('خطا در دریافت داده:', error);
+                    console.error('❌ خطا در دریافت داده:', error);
                 });
         }
 
+        // ===== شروع =====
         setInterval(checkForNewTeams, checkInterval);
         checkForNewTeams();
     </script>

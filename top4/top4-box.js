@@ -1,7 +1,7 @@
 $(document).ready(function () {
     function updateTeamsInfo() {
         $.ajax({
-            url: 'https://itsalib2.ir/wp-content/plugins/livePoint/top4/top4box-ajax.php',
+            url: '../wp-content/plugins/livePoint/top4/top4box-ajax.php?_=' + new Date().getTime(),
             type: 'GET',
             dataType: 'json',
             success: function (data) {
@@ -14,6 +14,6 @@ $(document).ready(function () {
         });
     }
 
-    // اجرای تابع updateTeamsInfo هر ۳ ثانیه
+    // اجرای تابع هر ۵۰۰ میلی‌ثانیه
     setInterval(updateTeamsInfo, 500);
 });

@@ -70,6 +70,7 @@
             isDisplaying = true;
             const team = teamQueue.shift();
 
+            // ===== استفاده از team.rank (که خودمون محاسبه کردیم) =====
             targetElement.innerHTML = `
                 <div class="teams">
                     <div style="background:${team.poscolor};" class="rank">#${team.rank}</div>
@@ -89,13 +90,26 @@
     }
 
     function checkForNewTeams() {
-        fetch(apiUrl)
+        fetch(apiUrl + '?_=' + Date.now())
             .then(response => response.json())
             .then(data => {
-                const teams = data.teams || [];
+                let teams = data.teams || [];
 
-                // ===== ۱. تیم‌های زنده را چک کن: اگر قبلاً در لیست بودند، حذفشان کن =====
-                const aliveTeams = teams.filter(team => team.alive > 0);
+                // ===== ۱. محاسبه رنک واقعی بر اساس امتیازات =====
+                const sortedTeams = [...teams].sort((a, b) => {
+                    if (b.total !== a.total) return b.total - a.total;
+                    if (b.win !== a.win) return b.win - a.win;
+                    if (b.plc !== a.plc) return b.plc - a.plc;
+                    return b.kills - a.kills;
+                });
+
+                const teamsWithRank = teams.map(team => {
+                    const rank = sortedTeams.findIndex(t => t.name === team.name) + 1;
+                    return { ...team, rank };
+                });
+
+                // ===== ۲. تیم‌های زنده را چک کن =====
+                const aliveTeams = teamsWithRank.filter(team => team.alive > 0);
                 let changed = false;
 
                 aliveTeams.forEach(team => {
@@ -110,8 +124,8 @@
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(displayedTeamIds));
                 }
 
-                // ===== ۲. تیم‌های مرده جدید را اضافه کن =====
-                const deadTeams = teams.filter(team => team.alive < 1);
+                // ===== ۳. تیم‌های مرده جدید را اضافه کن =====
+                const deadTeams = teamsWithRank.filter(team => team.alive < 1);
 
                 deadTeams.forEach(team => {
                     if (!displayedTeamIds.includes(team.name)) {

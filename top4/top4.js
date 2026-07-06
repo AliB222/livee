@@ -1,7 +1,7 @@
 $(document).ready(function () {
     function updateTeamsInfo() {
         $.ajax({
-            url: 'https://itsalib2.ir/wp-content/plugins/livePoint/top4/top4-ajax.php',
+            url: '../wp-content/plugins/livePoint/top4/top4-ajax.php?_=' + new Date().getTime(),
             type: 'GET',
             dataType: 'json',
             success: function (data) {
@@ -14,10 +14,11 @@ $(document).ready(function () {
         });
     }
 
-    // اجرای تابع updateTeamsInfo هر ۳ ثانیه
+    // اجرای تابع هر ۱ ثانیه
     setInterval(updateTeamsInfo, 1000);
 });
 
+// ===== انیمیشن‌ها =====
 setInterval(function () {
     let parent1 = document.getElementById("team");
     let parent2 = document.getElementById("live");
@@ -34,16 +35,15 @@ setInterval(function () {
         parent1.classList.remove("animate__delay-5s");
     }
 }, 1);
+
 setInterval(function () {
     let parent2 = document.getElementById("live");
     if (parent2.children.length > 0) {
         parent2.classList.add("animate__animated");
         parent2.classList.add("animate__fadeInDown");
-
     }
     else {
         parent2.classList.remove("animate__animated");
         parent2.classList.remove("animate__fadeInDown");
-       
     }
 }, 2);

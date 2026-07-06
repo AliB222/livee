@@ -9,10 +9,36 @@
  * Author URI: 
  **/
 
+// ============================================================
+// ===== بارگذاری استایل‌ها و اسکریپت‌های عمومی =====
+// ============================================================
+add_action('wp_enqueue_scripts', 'lp_public_assets');
+function lp_public_assets() {
+    // بارگذاری CSS
+    wp_enqueue_style(
+        'lp-main-css',
+        plugin_dir_url(__FILE__) . 'css/main.css',
+        array(),
+        '1.0'
+    );
+    
+    // بارگذاری JS
+    wp_enqueue_script(
+        'lp-main-js',
+        plugin_dir_url(__FILE__) . 'js/main.js',
+        array('jquery'),
+        '1.0',
+        true // بارگذاری در فوتر
+    );
+}
+
+// ============================================================
+// ===== کدهای قبلی (ACF و ...) =====
+// ============================================================
+
 /**
  * Add sub options page with a custom post id
  */
-
 function my_acf_save_post($post_id) {
     // بررسی کنید که آیا در حال ذخیره صفحه تنظیمات هستید
     if ($post_id !== 'options') {
@@ -44,14 +70,10 @@ function my_acf_save_post($post_id) {
     }
 
     // به‌روز رسانی فیلدهای ACF
-    // اگر فیلدها وجود ندارند، به‌روز رسانی آن‌ها با مقادیر جدید
     update_field('total-team', $total_team, 'options');
     update_field('total-alive', $total_alive, 'options');
 }
 add_action('acf/save_post', 'my_acf_save_post', 20);
-
-
-
 
 if( function_exists('acf_add_options_page') ) {
 	acf_add_options_sub_page(array(
@@ -99,10 +121,13 @@ function aa_ucs_save_acf_metabox_fields( $post_id ) {
 }
 add_action( 'acf/save_post', 'aa_ucs_save_acf_metabox_fields', 20 );
 
+// ============================================================
+// ===== بارگذاری فایل‌های اضافی =====
+// ============================================================
+
 if ( file_exists( plugin_dir_path( __FILE__ ) . 'livepoint-panel.php' ) ) {
     include_once plugin_dir_path( __FILE__ ) . 'livepoint-panel.php';
 }
-
 
 if ( file_exists( plugin_dir_path( __FILE__ ) . 'lp-save-api.php' ) ) {
     include_once plugin_dir_path( __FILE__ ) . 'lp-save-api.php';

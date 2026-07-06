@@ -1,26 +1,45 @@
-let el = document.querySelector(".animated > *");
-let el2 = document.querySelector(".animated").innerText;
-
-if (el2.length > 10){
-el.setAttribute("style", "animation: 4s linear 0s infinite alternate move;");
-}
-jQuery(document).ready(function () {
+console.log('✅ main.js اجرا شد!');
+jQuery(document).ready(function ($) {
     function updateTeamsInfo() {
-        jQuery.ajax({
-            url: 'https://itsalib2.ir/wp-content/plugins/livePoint/team-ajax.php',
+        $.ajax({
+            url: '/livepoint/wp-content/plugins/livePoint/api.php?_=' + new Date().getTime(),
             type: 'GET',
-            dataType: 'json', 
+            dataType: 'json',
             success: function (data) {
-                jQuery('#liveBox').html(data.html);
-                var teams = data.teams;
+                if (data.teams && data.teams.length > 0) {
+                    var teams = data.teams;
+                    var html = '';
+
+                    $.each(teams, function (index, team) {
+                        // ===== دریافت کلاس از داده =====
+                        var teamClass = team.class || '';
+
+                        // ===== ساخت کارت تیم با کلاس =====
+                        html += '<div class="name animated ' + teamClass + '">';
+                        html += '  <div class="alive">';
+                        if (team.alive == 0) {
+                            html += '<img src="http://localhost/livepoint/wp-content/plugins/livePoint/img/helmet.svg" style="width:20px;">';
+                        } else {
+                            for (var i = 1; i <= team.alive; i++) {
+                                html += '<img src="http://localhost/livepoint/wp-content/plugins/livePoint/img/helmet.svg" style="width:20px;">';
+                            }
+                        }
+                        html += '  </div>';
+                        html += '  <div class="kills">' + team.kills + '</div>';
+                        html += '  <div class="plc">' + team.plc + '</div>';
+                        html += '  <div class="total">' + team.total + '</div>';
+                        html += '</div>';
+                    });
+
+                    $('#teams-container').html(html);
+                }
             },
             error: function (xhr, status, error) {
-                console.error('خطا در درخواست Ajax: ' + status);
+                console.error('❌ خطا در دریافت داده‌ها:', error);
             }
         });
     }
 
-    // اجرای تابع updateTeamsInfo هر ۳ ثانیه
+    updateTeamsInfo();
     setInterval(updateTeamsInfo, 1000);
 });
-

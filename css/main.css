@@ -10,6 +10,36 @@
     font-family: "Bebas Neue", Sans-serif !important;
 }
 
+/* ===== کلاس‌های جدید برای رنگ‌بندی شرطی ===== */
+
+/* تیم غیرفعال (چک‌باکس فعال خاموش) - صورتی */
+.notActive .name,
+.notActive .alive,
+.notActive .kills,
+.notActive .plc,
+.notActive .total {
+    background: #e97171 !important;
+}
+
+/* تیم مرده (alive = 0) - خاکستری */
+.dead .name,
+.dead .alive,
+.dead .kills,
+.dead .plc,
+.dead .total {
+    background: #8d8c8c !important;
+}
+
+/* اگر هر دو شرط همزمان برقرار باشند، اولویت با غیرفعال است */
+.notActive.dead .name,
+.notActive.dead .alive,
+.notActive.dead .kills,
+.notActive.dead .plc,
+.notActive.dead .total {
+    background: #e97171 !important;
+}
+
+/* ===== بقیه استایل‌ها به همان صورت قبلی ===== */
 .teams {
     width: 100%;
     height: 45px;
@@ -35,7 +65,6 @@
 
 .headText:nth-of-type(2) {
     width: 32%;
-
 }
 
 .headText:nth-of-type(3),
@@ -128,32 +157,12 @@
 .animated {
     overflow: hidden;
     white-space: nowrap;
-
 }
 
 .animated>* {
     position: relative;
+}
 
-}
-/*
-.dead:after {
-    content: "Elimianted";
-    width: 100px;
-    height: 46px;
-    line-height: 50px;
-    position: absolute;
-    background: #df5a5a;
-    display: block;
-    margin-left: 138px;
-    text-align: center;
-    font-size: 25px;
-    animation-name: deads, op;
-    animation-duration: 1.5s, 1s;
-    animation-delay: 0ms, 3s;
-    animation-timing-function: ease-in, ease-out;
-    animation-fill-mode: forwards , forwards;
-}
-*/
 @keyframes deads {
     0% {width: 100px;}
     100% {width: 412px;}
@@ -168,6 +177,7 @@
     75%,
     100% {transform: translateX(-100%);right: 100%;}
 }
+
 #info {
     width: 100%;
     height: 120px;
@@ -210,6 +220,7 @@
     font-size: 28px;
     font-weight: bold;
 }
+
 .dead .name,
 .dead .alive,
 .dead .kills,
@@ -217,6 +228,7 @@
 .dead .total {
     background: #868686;
 }
+
 .pos-color{
     content: "";
     width: 8px;
@@ -230,6 +242,7 @@
     background: green !important;
     z-index: 1;
 }
+
 .infoTxt p {
     letter-spacing: 2px;
 }
@@ -238,6 +251,7 @@
 #teamsHead .headText:nth-of-type(4) {
     padding-right: 10px !important;
 }
+
 .notActive .name,
 .notActive .alive,
 .notActive .kills,
@@ -245,6 +259,7 @@
 .notActive .total {
     background: #eb8686;
 }
+
 .pos1 .logo:after {
     box-shadow: 0px 0px 14px 1px #e16815 !important;
     background: #e16815 !important;

@@ -1,6 +1,6 @@
 <?php
 /**
- * LivePoint Panel - نسخه نهایی با اسکریپت جداگانه
+ * LivePoint Panel - نسخه نهایی با ستون ردیف، چک‌باکس نمایش همه تیم‌ها و لوگوهای قابل کلیک
  */
 if (!defined('ABSPATH')) exit;
 
@@ -14,16 +14,14 @@ function lp_panel_enqueue_scripts($hook) {
     wp_enqueue_media();
     wp_enqueue_script('jquery');
     
-    // بارگذاری اسکریپت اصلی از فایل جداگانه
     wp_enqueue_script(
         'lp-panel-script',
         plugin_dir_url(__FILE__) . 'lp-panel.js',
         array('jquery', 'media-upload'),
-        '1.1',
+        '1.8',
         true
     );
     
-    // ارسال داده‌های AJAX به اسکریپت
     wp_localize_script('lp-panel-script', 'lp_ajax', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
         'nonce'   => wp_create_nonce('lp_panel')
@@ -52,6 +50,7 @@ function lp_panel_menu() {
 function lp_panel_page() {
     $general = get_option('lp_general', []);
     $teams = get_option('lp_teams', []);
+    $match_winner_rows = get_option('lp_match_winner_rows', []);
     
     $org_logo_url = '';
     if (!empty($general['org_logo_id'])) {
@@ -65,7 +64,6 @@ function lp_panel_page() {
             .lp-general-box { background:#ffffff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:20px 25px; margin-bottom:25px; border:1px solid #e2e6ea; }
             .lp-general-box .lp-box-header { border-bottom:2px solid #f0f2f5; padding-bottom:12px; margin-bottom:18px; }
             .lp-general-box .lp-box-header h2 { margin:0; font-size:18px; color:#1d2327; font-weight:600; display:flex; align-items:center; gap:8px; }
-            .lp-general-box .lp-box-header h2::before { content:"⚙️"; font-size:20px; }
             .lp-general-fields { display:flex; flex-wrap:wrap; gap:15px 20px; }
             .lp-general-fields .lp-field { flex:1 1 180px; min-width:150px; }
             .lp-general-fields .lp-field label { display:block; font-size:13px; font-weight:600; color:#2c3338; margin-bottom:4px; }
@@ -79,26 +77,45 @@ function lp_panel_page() {
             .lp-message { display:none; padding:12px 18px; border-radius:8px; margin-bottom:18px; font-weight:500; }
             .team-row.lp-row-hidden { display: none !important; }
             .lp-table .team-row.dead .num-input.dead { background-color:#ffcdd2 !important; }
-            .reset-buttons { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-            .reset-buttons a, .reset-buttons button { padding:6px 16px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; cursor:pointer; border:1px solid #ddd; background:#fff; }
             .lp-hidden-column { display:none !important; }
             .hide-col-btn { background:transparent; border:none; cursor:pointer; font-size:11px; margin-right:2px; color:#888; padding:0 2px; }
             .hide-col-btn:hover { color:#2271b1 !important; }
             #teams-table th { position:relative; }
+            .row-number { font-weight:bold; color:#1d2327; }
+            .match-logos-box { background:#ffffff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:20px 25px; margin-top:25px; border:1px solid #e2e6ea; }
+            .match-logos-box .lp-box-header { border-bottom:2px solid #f0f2f5; padding-bottom:12px; margin-bottom:18px; }
+            .match-logos-box .lp-box-header h2 { margin:0; font-size:18px; color:#1d2327; font-weight:600; display:flex; align-items:center; gap:8px; }
+            .match-logos-box .lp-box-header h2::before { content:"🏆"; font-size:20px; }
+            .match-logos-fields { display:flex; flex-wrap:wrap; gap:15px 20px; }
+            .match-logos-fields .lp-field { flex:1 1 120px; min-width:100px; }
+            .match-logos-fields .lp-field label { display:block; font-size:13px; font-weight:600; color:#2c3338; margin-bottom:4px; }
+            .match-logos-fields .lp-field input[type="number"] { width:100%; padding:8px 12px; font-size:13px; border:1px solid #d0d5dd; border-radius:6px; background:#fafbfc; }
+            .match-logos-fields .lp-field input[type="number"]:focus { border-color:#2271b1; background:#fff; outline:none; box-shadow:0 0 0 2px rgba(34,113,177,0.15); }
+            .lp-btn-save { padding:8px 36px; font-size:15px; border-radius:6px; background:#2271b1; border:none; color:#fff; cursor:pointer; font-weight:600; transition:background 0.2s; }
+            .lp-btn-save:hover { background:#135e96; }
+            .lp-btn-save:disabled { opacity:0.7; cursor:not-allowed; }
+            
+            /* ===== دکمه حذف لوگو (فقط در هاور نمایش داده شود) ===== */
+            .lp-image-remove-btn,
+            .team-image-remove-btn {
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            }
+            .lp-image-wrap:hover .lp-image-remove-btn,
+            .team-image-wrap:hover .team-image-remove-btn {
+                opacity: 1;
+            }
         </style>
 
+        <!-- ===== هدر بدون دکمه ===== -->
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:20px;">
             <h1 style="font-size:24px; font-weight:700; color:#1d2327; margin:0;">🏆 LIVE POINT</h1>
-            <div class="reset-buttons">
-                <a href="#" id="reset-alive-btn" style="background:#e8f5e9; color:#2e7d32; border-color:#a5d6a7;">🔄 Reset Alive (4)</a>
-                <a href="#" id="reset-all-btn" style="background:#ffebee; color:#c62828; border-color:#ef9a9a;">🔄 Reset All</a>
-                <button type="button" id="show-all-teams-btn" style="background:#e3f2fd; color:#0d47a1; border-color:#90caf9;">👁️ نمایش همه تیم‌ها</button>
-            </div>
         </div>
 
         <div id="lp-message" class="lp-message"></div>
 
         <form id="lp-panel-form" method="post">
+            <!-- ===== تنظیمات مسابقه ===== -->
             <div class="lp-general-box">
                 <div class="lp-box-header"><h2>تنظیمات مسابقه</h2></div>
                 <div class="lp-general-fields">
@@ -115,10 +132,11 @@ function lp_panel_page() {
                         <div class="lp-image-container">
                             <input type="hidden" id="lp-logo-id" class="lp-image-id" value="<?php echo esc_attr($general['org_logo_id'] ?? ''); ?>">
                             <div class="lp-image-wrap" style="<?php echo empty($org_logo_url) ? 'display:none;' : ''; ?>">
-                                <div class="image-preview"><?php if ($org_logo_url): ?><img src="<?php echo esc_url($org_logo_url); ?>" style="max-height:50px;"><?php endif; ?></div>
-                                <div class="lp-image-actions">
-                                    <button type="button" class="button lp-image-edit">✏️</button>
-                                    <button type="button" class="button lp-image-remove">✖</button>
+                                <div class="image-preview" style="cursor:pointer; position:relative; display:inline-block;">
+                                    <?php if ($org_logo_url): ?>
+                                        <img src="<?php echo esc_url($org_logo_url); ?>" style="max-height:50px;">
+                                        <button type="button" class="button lp-image-remove-btn" style="position:absolute; top:-8px; right:-8px; background:#dc3545; color:#fff; border:none; border-radius:50%; width:20px; height:20px; line-height:20px; font-size:14px; cursor:pointer; padding:0; text-align:center;">×</button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             <button type="button" class="lp-image-add" style="<?php echo empty($org_logo_url) ? '' : 'display:none;'; ?>">📁 انتخاب تصویر</button>
@@ -135,11 +153,18 @@ function lp_panel_page() {
                 </div>
             </div>
 
+            <!-- ===== جدول تیم‌ها با ستون ردیف ===== -->
             <div style="background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); padding:20px 25px; border:1px solid #e2e6ea;">
                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:15px;">
                     <h2 style="margin:0; font-size:18px; font-weight:600; color:#1d2327;">👥 لیست تیم‌ها</h2>
-                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                        <a href="#" id="reset-alive-btn" style="background:#e8f5e9; color:#2e7d32; border-color:#a5d6a7; padding:6px 16px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; cursor:pointer; border:1px solid #ddd; display:inline-block;">🔄 Reset Alive (4)</a>
+                        <a href="#" id="reset-all-btn" style="background:#ffebee; color:#c62828; border-color:#ef9a9a; padding:6px 16px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; cursor:pointer; border:1px solid #ddd; display:inline-block;">🔄 Reset All</a>
+                        <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:#e3f2fd; padding:6px 16px; border-radius:6px; border:1px solid #90caf9; font-size:13px; font-weight:500; color:#0d47a1;">
+                            <input type="checkbox" id="show-all-teams-checkbox"> نمایش همه تیم‌ها
+                        </label>
                         <button type="button" id="add-team-btn" class="button button-primary">➕ سطر جدید</button>
+                        <button type="button" id="reset-columns-btn" class="button" style="font-size:12px; padding:4px 12px;">👁️ نمایش همه ستون‌ها</button>
                     </div>
                 </div>
 
@@ -147,6 +172,7 @@ function lp_panel_page() {
                     <table id="teams-table" class="lp-table">
                         <thead>
                             <tr>
+                                <th style="width:40px;">#</th>
                                 <th style="width:48px;">فعال</th>
                                 <th style="width:48px;">رنگ</th>
                                 <th style="width:42px;">WIN</th>
@@ -166,10 +192,10 @@ function lp_panel_page() {
                         <tbody id="teams-tbody">
                             <?php if (empty($teams)): ?>
                             <tr id="no-teams-row">
-                                <td colspan="14" style="text-align:center; padding:30px; color:#888;">هیچ تیمی وجود ندارد.</td>
+                                <td colspan="15" style="text-align:center; padding:30px; color:#888;">هیچ تیمی وجود ندارد.</td>
                             </tr>
                             <?php else: ?>
-                            <?php foreach ($teams as $index => $t): 
+                            <?php $row_num = 1; foreach ($teams as $index => $t): 
                                 $logo_url = '';
                                 if (!empty($t['logo_id'])) {
                                     $img = wp_get_attachment_image_src($t['logo_id'], 'thumbnail');
@@ -179,6 +205,7 @@ function lp_panel_page() {
                                 $hidden_class = (intval($t['alive'] ?? 0) < 1) ? 'lp-row-hidden' : '';
                             ?>
                             <tr class="team-row <?php echo $dead_class; ?> <?php echo $hidden_class; ?>" data-index="<?php echo $index; ?>">
+                                <td class="row-number"><?php echo $row_num++; ?></td>
                                 <td><input type="checkbox" class="team-active" <?php echo !empty($t['active']) ? 'checked' : ''; ?>></td>
                                 <td><input type="color" class="team-color" value="<?php echo esc_attr($t['color'] ?? '#ff9800'); ?>" style="width:32px; height:24px; padding:0; border:none; cursor:pointer;"></td>
                                 <td><input type="number" class="team-win num-input" value="<?php echo esc_attr($t['win'] ?? 0); ?>"></td>
@@ -196,10 +223,11 @@ function lp_panel_page() {
                                     <div class="team-image-container">
                                         <input type="hidden" class="team-logo-id" value="<?php echo esc_attr($t['logo_id'] ?? ''); ?>">
                                         <div class="team-image-wrap" style="<?php echo empty($logo_url) ? 'display:none;' : ''; ?>">
-                                            <div class="image-preview"><?php if ($logo_url): ?><img src="<?php echo esc_url($logo_url); ?>" style="max-height:30px;"><?php endif; ?></div>
-                                            <div class="lp-image-actions">
-                                                <button type="button" class="button team-image-edit">✏️</button>
-                                                <button type="button" class="button team-image-remove">✖</button>
+                                            <div class="image-preview" style="cursor:pointer; position:relative; display:inline-block;">
+                                                <?php if ($logo_url): ?>
+                                                    <img src="<?php echo esc_url($logo_url); ?>" style="max-height:30px;">
+                                                    <button type="button" class="button team-image-remove-btn" style="position:absolute; top:-8px; right:-8px; background:#dc3545; color:#fff; border:none; border-radius:50%; width:20px; height:20px; line-height:20px; font-size:14px; cursor:pointer; padding:0; text-align:center;">×</button>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                         <button type="button" class="team-image-add" style="<?php echo empty($logo_url) ? '' : 'display:none;'; ?>">📁</button>
@@ -213,11 +241,32 @@ function lp_panel_page() {
                         </tbody>
                     </table>
                 </div>
+            </div>
 
-                <div style="margin-top:18px; display:flex; justify-content:flex-end;">
-                    <input type="submit" id="lp-save-btn" class="button button-primary" style="padding:8px 36px; font-size:15px;" value="💾 ذخیره همه تغییرات">
+            <!-- ===== بخش شماره ردیف برندگان مچ‌ها ===== -->
+            <div class="match-logos-box">
+                <div class="lp-box-header">
+                    <h2>شماره ردیف برندگان هر مچ</h2>
+                    <p style="margin:5px 0 0; color:#666; font-size:13px;">شماره ردیف تیم برنده را برای هر مچ (۱ تا ۵) وارد کنید.</p>
+                </div>
+                <div class="match-logos-fields">
+                    <?php for ($i = 1; $i <= 5; $i++):
+                        $row_number = $match_winner_rows[$i] ?? '';
+                    ?>
+                    <div class="lp-field">
+                        <label>مچ <?php echo $i; ?></label>
+                        <input type="number" class="lp-match-row" data-match="<?php echo $i; ?>" value="<?php echo esc_attr($row_number); ?>" min="1" max="50" placeholder="ردیف">
+                        <div style="font-size:11px; color:#888; margin-top:4px;">شماره ردیف تیم برنده</div>
+                    </div>
+                    <?php endfor; ?>
                 </div>
             </div>
+
+            <!-- ===== دکمه ذخیره ===== -->
+            <div style="margin-top:18px; display:flex; justify-content:flex-end;">
+                <input type="submit" id="lp-save-btn" class="button button-primary lp-btn-save" value="💾 ذخیره همه تغییرات">
+            </div>
+
         </form>
     </div>
     <?php
@@ -235,6 +284,15 @@ function lp_save_panel_ajax() {
     }
     if (isset($_POST['general'])) {
         update_option('lp_general', $_POST['general']);
+    }
+    
+    if (isset($_POST['match_rows'])) {
+        $rows = [];
+        foreach ($_POST['match_rows'] as $key => $val) {
+            $match_num = str_replace('match_row_', '', $key);
+            $rows[intval($match_num)] = intval($val);
+        }
+        update_option('lp_match_winner_rows', $rows);
     }
 
     wp_send_json_success();

@@ -28,7 +28,7 @@ jQuery(document).ready(function($) {
         }, 4000);
     }
 
-    // ===== کلید Enter =====
+    // ===== کلید Enter (دکمه‌ها) =====
     $(document).on("keydown", function(e) {
         if (e.key === "Enter" && !$(e.target).is("input, textarea, select")) {
             e.preventDefault();
@@ -36,12 +36,86 @@ jQuery(document).ready(function($) {
         }
     });
 
+    // ===== اینتر در فیلدها = فوکوس برداری + کلیک دکمه ذخیره =====
+    $(document).on("keydown", "input[type='number'], input[type='text']", function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            $(this).blur();
+            $("#lp-save-btn").click();
+        }
+    });
+
+    // ===== حذف فلش‌های اسپین باکس =====
+    $('<style>')
+        .prop('type', 'text/css')
+        .html(`
+            input[type="number"]::-webkit-outer-spin-button,
+            input[type="number"]::-webkit-inner-spin-button {
+                -webkit-appearance: none !important;
+                margin: 0 !important;
+            }
+            input[type="number"] {
+                -moz-appearance: textfield !important;
+            }
+            input[type="number"] {
+                appearance: textfield !important;
+            }
+        `)
+        .appendTo('head');
+
+    // ===== رفع پس‌زمینه روشن در دارک مود =====
+    $('<style>')
+        .prop('type', 'text/css')
+        .html(`
+            .lp-match-row,
+            .lp-match-row:focus,
+            .lp-match-row:hover,
+            .lp-match-row:active {
+                background: #fafbfc !important;
+                border-color: #d0d5dd !important;
+                box-shadow: none !important;
+                outline: none !important;
+            }
+            .lp-match-row:focus-visible {
+                outline: none !important;
+                box-shadow: none !important;
+            }
+        `)
+        .appendTo('head');
+
+    // ============================================================
+    // ===== چک‌باکس نمایش همه تیم‌ها =====
+    // ============================================================
+    function applyShowAllTeamsState() {
+        var showAll = localStorage.getItem('lp_show_all_teams') === 'true';
+        $('#show-all-teams-checkbox').prop('checked', showAll);
+        if (showAll) {
+            $('.team-row').removeClass('lp-row-hidden');
+        } else {
+            $('.team-row').each(function() {
+                var alive = parseInt($(this).find('.team-alive').val()) || 0;
+                if (alive < 1) {
+                    $(this).addClass('lp-row-hidden');
+                } else {
+                    $(this).removeClass('lp-row-hidden');
+                }
+            });
+        }
+    }
+
+    $(document).on('change', '#show-all-teams-checkbox', function() {
+        var isChecked = $(this).is(':checked');
+        localStorage.setItem('lp_show_all_teams', isChecked ? 'true' : 'false');
+        applyShowAllTeamsState();
+    });
+
     // ===== دکمه‌های Reset =====
     $(document).on("click", "#reset-alive-btn", function(e) {
         e.preventDefault();
         if (confirm("✅ همه مقادیر Alive به 4 تنظیم شوند؟")) {
-            $(".team-alive").val(4).removeClass("dead");
-            $(".team-row").removeClass("dead").removeClass("lp-row-hidden");
+            $(".team-alive").val(4).removeClass("dead").css("background-color", "");
+            $(".team-row").removeClass("dead");
+            applyShowAllTeamsState();
             showMessage("✅ همه Alive به ۴ تنظیم شدند.", "success");
         }
         $(this).blur();
@@ -51,23 +125,18 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         if (confirm("⚠️ همه مقادیر (به جز نام و لوگو) ریست شوند؟")) {
             $(".team-win, .team-plc, .team-bonus, .team-km5, .team-km4, .team-km3, .team-km2, .team-km1").val(0);
-            $(".team-alive").val(4).removeClass("dead");
+            $(".team-alive").val(4).removeClass("dead").css("background-color", "");
             $(".team-name").val("");
             $(".team-image-container").each(function() {
                 $(this).find(".team-logo-id").val("");
-                $(this).find(".team-image-preview").html("");
+                $(this).find(".image-preview").html("");
                 $(this).find(".team-image-wrap").hide();
                 $(this).find(".team-image-add").show();
             });
-            $(".team-row").removeClass("dead").removeClass("lp-row-hidden");
+            $(".team-row").removeClass("dead");
+            applyShowAllTeamsState();
             showMessage("✅ همه مقادیر ریست شدند.", "success");
         }
-        $(this).blur();
-    });
-
-    $(document).on("click", "#show-all-teams-btn", function() {
-        $(".team-row").removeClass("lp-row-hidden");
-        showMessage("✅ همه تیم‌ها نمایش داده شدند.", "success");
         $(this).blur();
     });
 
@@ -99,7 +168,6 @@ jQuery(document).ready(function($) {
             var $th = $(this);
             var text = $th.text().trim();
             if (["فعال", "رنگ", "نام تیم", "حذف", ""].includes(text)) return;
-            
             var $btn = $('<button type="button" class="hide-col-btn" data-col="' + index + '" style="background:transparent; border:none; cursor:pointer; font-size:11px; margin-right:2px; color:#888;" title="مخفی کردن ستون">✕</button>');
             $th.prepend($btn);
         });
@@ -137,12 +205,58 @@ jQuery(document).ready(function($) {
 
     $('<style>.lp-hidden-column { display:none !important; } .hide-col-btn:hover { color:#2271b1 !important; }</style>').appendTo("head");
 
-    // ===== Media Uploader =====
+    // ============================================================
+    // ===== لوگوی عمومی (کلیک روی تصویر = ویرایش) =====
+    // ============================================================
+    $(document).on("click", ".lp-image-wrap .image-preview img", function(e) {
+        e.preventDefault();
+        var container = $(this).closest(".lp-image-container");
+        container.find(".lp-image-add").click();
+    });
+
+    // ============================================================
+    // ===== لوگوی تیم‌ها (کلیک روی تصویر = ویرایش) =====
+    // ============================================================
+    $(document).on("click", ".team-image-wrap .image-preview img", function(e) {
+        e.preventDefault();
+        var container = $(this).closest(".team-image-container");
+        container.find(".team-image-add").click();
+    });
+
+    // ============================================================
+    // ===== دکمه حذف لوگوی عمومی =====
+    // ============================================================
+    $(document).on("click", ".lp-image-remove-btn", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var container = $(this).closest(".lp-image-container");
+        container.find(".lp-image-id").val("");
+        container.find(".image-preview").html("");
+        container.find(".lp-image-wrap").hide();
+        container.find(".lp-image-add").show();
+        showMessage("✅ تصویر حذف شد.", "success");
+    });
+
+    // ============================================================
+    // ===== دکمه حذف لوگوی تیم‌ها =====
+    // ============================================================
+    $(document).on("click", ".team-image-remove-btn", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var container = $(this).closest(".team-image-container");
+        container.find(".team-logo-id").val("");
+        container.find(".image-preview").html("");
+        container.find(".team-image-wrap").hide();
+        container.find(".team-image-add").show();
+        showMessage("✅ لوگو حذف شد.", "success");
+    });
+
+    // ===== Media Uploader عمومی =====
     $(document).on("click", ".lp-image-add", function(e) {
         e.preventDefault();
         var container = $(this).closest(".lp-image-container");
         var targetId = container.find(".lp-image-id");
-        var preview = container.find(".lp-image-preview");
+        var preview = container.find(".image-preview");
         var wrap = container.find(".lp-image-wrap");
         var addBtn = container.find(".lp-image-add");
         var frame = wp.media({
@@ -162,26 +276,12 @@ jQuery(document).ready(function($) {
         frame.open();
     });
 
-    $(document).on("click", ".lp-image-remove", function(e) {
-        e.preventDefault();
-        var container = $(this).closest(".lp-image-container");
-        container.find(".lp-image-id").val("");
-        container.find(".lp-image-preview").html("");
-        container.find(".lp-image-wrap").hide();
-        container.find(".lp-image-add").show();
-        showMessage("✅ تصویر حذف شد.", "success");
-    });
-
-    $(document).on("click", ".lp-image-edit", function(e) {
-        e.preventDefault();
-        $(this).closest(".lp-image-container").find(".lp-image-add").click();
-    });
-
+    // ===== Media Uploader لوگوی تیم‌ها =====
     $(document).on("click", ".team-image-add", function(e) {
         e.preventDefault();
         var container = $(this).closest(".team-image-container");
         var targetId = container.find(".team-logo-id");
-        var preview = container.find(".team-image-preview");
+        var preview = container.find(".image-preview");
         var wrap = container.find(".team-image-wrap");
         var addBtn = container.find(".team-image-add");
         var frame = wp.media({
@@ -199,21 +299,6 @@ jQuery(document).ready(function($) {
             showMessage("✅ لوگو انتخاب شد.", "success");
         });
         frame.open();
-    });
-
-    $(document).on("click", ".team-image-remove", function(e) {
-        e.preventDefault();
-        var container = $(this).closest(".team-image-container");
-        container.find(".team-logo-id").val("");
-        container.find(".team-image-preview").html("");
-        container.find(".team-image-wrap").hide();
-        container.find(".team-image-add").show();
-        showMessage("✅ لوگو حذف شد.", "success");
-    });
-
-    $(document).on("click", ".team-image-edit", function(e) {
-        e.preventDefault();
-        $(this).closest(".team-image-container").find(".team-image-add").click();
     });
 
     // ===== اضافه و حذف تیم =====
@@ -236,19 +321,16 @@ jQuery(document).ready(function($) {
                 '<div class="team-image-container">' +
                     '<input type="hidden" class="team-logo-id" value="">' +
                     '<div class="team-image-wrap" style="display:none; position:relative; max-width:80px; max-height:35px;">' +
-                        '<div class="team-image-preview" style="max-height:35px; max-width:80px; border:1px solid #ddd; padding:3px; background:#fff;"></div>' +
-                        '<div class="team-image-actions" style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center; gap:10px;">' +
-                            '<button type="button" class="button button-small team-image-edit" style="padding:2px 8px; font-size:11px; background:transparent; color:#fff; border:1px solid #fff;">✏️</button>' +
-                            '<button type="button" class="button button-small team-image-remove" style="padding:2px 8px; font-size:11px; background:transparent; color:#fff; border:1px solid #fff;">✖</button>' +
-                        '</div>' +
+                        '<div class="image-preview" style="cursor:pointer; position:relative; display:inline-block; max-height:35px; max-width:80px; border:1px solid #ddd; padding:3px; background:#fff;"></div>' +
+                        '<button type="button" class="button button-small team-image-add" style="padding:2px 8px; font-size:11px;">افزودن تصویر</button>' +
                     '</div>' +
-                    '<button type="button" class="button button-small team-image-add" style="padding:2px 8px; font-size:11px;">افزودن تصویر</button>' +
                 '</div>' +
             '</td>' +
             '<td style="border:1px solid #ddd; padding:4px;"><input type="text" class="team-name" value="تیم جدید" style="width:100%; padding:3px; direction:rtl; text-align:right;"></td>' +
             '<td style="text-align:center; border:1px solid #ddd; padding:4px;"><button type="button" class="button delete-team" style="background:#dc3545; color:#fff; border:none; padding:2px 10px; border-radius:4px; font-size:14px; cursor:pointer; line-height:24px;">✖</button></td>' +
         '</tr>';
         $("#teams-tbody").append(row);
+        applyShowAllTeamsState();
         showMessage("✅ تیم جدید اضافه شد.", "success");
         $(this).blur();
     });
@@ -256,12 +338,21 @@ jQuery(document).ready(function($) {
     $(document).on("click", ".delete-team", function() {
         if (confirm("حذف شود؟")) {
             $(this).closest("tr").remove();
+            var totalTeam = $(".team-row").length;
+            var totalAlive = 0;
+            $(".team-row").each(function() {
+                var alive = parseInt($(this).find(".team-alive").val()) || 0;
+                if (alive > 0) totalAlive += alive;
+            });
+            $("#lp-total-team").text(totalTeam);
+            $("#lp-total-alive").text(totalAlive);
+            applyShowAllTeamsState();
             showMessage("✅ تیم حذف شد.", "success");
         }
     });
 
     // ============================================================
-    // ===== ذخیره تغییرات (با استفاده از داده‌های ارسالی از PHP) =====
+    // ===== ذخیره تغییرات =====
     // ============================================================
     $(document).on("click", "#lp-save-btn", function(e) {
         e.preventDefault();
@@ -307,11 +398,20 @@ jQuery(document).ready(function($) {
             total_alive: totalAlive
         };
 
-        // استفاده از داده‌های ارسالی از PHP (lp_ajax)
+        var matchRows = {};
+        $(".lp-match-row").each(function() {
+            var match = $(this).data("match");
+            var val = $(this).val();
+            if (val && parseInt(val) > 0) {
+                matchRows['match_row_' + match] = parseInt(val);
+            }
+        });
+
         $.post(lp_ajax.ajaxurl, {
             action: "lp_save_panel",
             teams: teams,
             general: general,
+            match_rows: matchRows,
             nonce: lp_ajax.nonce
         }, function(res) {
             btn.val("💾 ذخیره همه تغییرات").prop("disabled", false);
@@ -319,6 +419,10 @@ jQuery(document).ready(function($) {
                 showMessage("✅ ذخیره شد!", "success");
                 $("#lp-total-team").text(totalTeam);
                 $("#lp-total-alive").text(totalAlive);
+                localStorage.setItem('lp_header_update', Date.now().toString());
+                localStorage.setItem('lp_match_logos_update', Date.now().toString());
+                console.log('📢 تغییرات ذخیره شد و به صفحات دیگر اطلاع داده شد.');
+                applyShowAllTeamsState();
             } else {
                 showMessage("❌ خطا: " + (res.data || "نامشخص"), "error");
             }
@@ -328,20 +432,22 @@ jQuery(document).ready(function($) {
         });
     });
 
-    // ===== زنده/مرده بودن تیم‌ها =====
+    // ============================================================
+    // ===== زنده/مرده بودن تیم‌ها (با تغییر رنگ لحظه‌ای) =====
+    // ============================================================
     $(document).on("change", ".team-alive", function() {
         var val = parseInt($(this).val()) || 0;
         var row = $(this).closest("tr");
         if (val > 4) { val = 4; $(this).val(4); }
         else if (val < 0) { val = 0; $(this).val(0); }
-        
         if (val < 1) {
-            $(this).addClass("dead");
-            row.addClass("lp-row-hidden");
+            $(this).addClass("dead").css("background-color", "#ffcdd2");
+            row.addClass("dead");
         } else {
-            $(this).removeClass("dead");
-            row.removeClass("lp-row-hidden");
+            $(this).removeClass("dead").css("background-color", "");
+            row.removeClass("dead");
         }
+        applyShowAllTeamsState();
     });
 
     $(document).on("mouseenter", ".lp-image-wrap, .team-image-wrap", function() {
@@ -351,8 +457,9 @@ jQuery(document).ready(function($) {
         $(this).find(".lp-image-actions, .team-image-actions").css("display", "none");
     });
 
-    // اجرای توابع اولیه
+    // ===== اجرای توابع اولیه =====
     addHideButtons();
     applyColumnStates();
     addResetColumnsButton();
+    applyShowAllTeamsState();
 });
