@@ -1,6 +1,6 @@
 <?php
 /**
- * LivePoint Panel - نسخه نهایی با ستون ردیف، چک‌باکس نمایش همه تیم‌ها و لوگوهای قابل کلیک
+ * LivePoint Panel - نسخه نهایی با ستون ردیف، چک‌باکس نمایش همه تیم‌ها، لوگوهای قابل کلیک و فیلدهای کنار Reset Alive
  */
 if (!defined('ABSPATH')) exit;
 
@@ -18,7 +18,7 @@ function lp_panel_enqueue_scripts($hook) {
         'lp-panel-script',
         plugin_dir_url(__FILE__) . 'lp-panel.js',
         array('jquery', 'media-upload'),
-        '1.8',
+        '1.9',
         true
     );
     
@@ -105,6 +105,41 @@ function lp_panel_page() {
             .team-image-wrap:hover .team-image-remove-btn {
                 opacity: 1;
             }
+
+            /* ===== استایل فیلدهای کوچک کنار Reset Alive ===== */
+            .inline-field {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                margin-left: 8px;
+            }
+            .inline-field label {
+                font-size: 12px;
+                font-weight: 500;
+                color: #2c3338;
+                margin: 0;
+                white-space: nowrap;
+            }
+            .inline-field input[type="number"] {
+                width: 50px;
+                padding: 4px 6px;
+                font-size: 12px;
+                border: 1px solid #d0d5dd;
+                border-radius: 4px;
+                background: #fafbfc;
+                text-align: center;
+            }
+            .inline-field input[type="number"]:focus {
+                border-color: #2271b1;
+                background: #fff;
+                outline: none;
+                box-shadow: 0 0 0 2px rgba(34,113,177,0.15);
+            }
+            .inline-field .hint {
+                font-size: 10px;
+                color: #888;
+                margin-right: 2px;
+            }
         </style>
 
         <!-- ===== هدر بدون دکمه ===== -->
@@ -158,12 +193,35 @@ function lp_panel_page() {
                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:15px;">
                     <h2 style="margin:0; font-size:18px; font-weight:600; color:#1d2327;">👥 لیست تیم‌ها</h2>
                     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                        <!-- ===== Reset Alive (4) ===== -->
                         <a href="#" id="reset-alive-btn" style="background:#e8f5e9; color:#2e7d32; border-color:#a5d6a7; padding:6px 16px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; cursor:pointer; border:1px solid #ddd; display:inline-block;">🔄 Reset Alive (4)</a>
+
+                        <!-- ===== فیلد شماره مچ فعلی (کنار Reset Alive) ===== -->
+                        <div class="inline-field">
+                            <label for="lp-current-match">مچ:</label>
+                            <input type="number" id="lp-current-match" value="<?php echo esc_attr($general['current_match'] ?? 1); ?>" min="1" max="5" step="1">
+                            <span class="hint">(۱-۵)</span>
+                        </div>
+
+                        <!-- ===== فیلد تعداد تیم‌های صعود کننده (کنار Reset Alive) ===== -->
+                        <div class="inline-field">
+                            <label for="lp-promoted-teams">صعود:</label>
+                            <input type="number" id="lp-promoted-teams" value="<?php echo esc_attr($general['promoted_teams'] ?? 0); ?>" min="0" max="50" step="1">
+                            <span class="hint">(۰=بدون خط)</span>
+                        </div>
+
+                        <!-- ===== Reset All ===== -->
                         <a href="#" id="reset-all-btn" style="background:#ffebee; color:#c62828; border-color:#ef9a9a; padding:6px 16px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; cursor:pointer; border:1px solid #ddd; display:inline-block;">🔄 Reset All</a>
+
+                        <!-- ===== چک‌باکس نمایش همه تیم‌ها ===== -->
                         <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:#e3f2fd; padding:6px 16px; border-radius:6px; border:1px solid #90caf9; font-size:13px; font-weight:500; color:#0d47a1;">
                             <input type="checkbox" id="show-all-teams-checkbox"> نمایش همه تیم‌ها
                         </label>
+
+                        <!-- ===== سطر جدید ===== -->
                         <button type="button" id="add-team-btn" class="button button-primary">➕ سطر جدید</button>
+
+                        <!-- ===== نمایش همه ستون‌ها ===== -->
                         <button type="button" id="reset-columns-btn" class="button" style="font-size:12px; padding:4px 12px;">👁️ نمایش همه ستون‌ها</button>
                     </div>
                 </div>

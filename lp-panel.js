@@ -301,34 +301,57 @@ jQuery(document).ready(function($) {
         frame.open();
     });
 
-    // ===== اضافه و حذف تیم =====
+    // ============================================================
+    // ===== اضافه و حذف تیم (نسخه اصلاح‌شده با دکمه آپلود صحیح) =====
+    // ============================================================
     $("#add-team-btn").on("click", function() {
         $("#no-teams-row").remove();
         var index = $(".team-row").length;
+        var rowNumber = index + 1;
+
         var row = '<tr class="team-row" data-index="' + index + '">' +
-            '<td style="text-align:center; border:1px solid #ddd; padding:4px;"><input type="checkbox" class="team-active" checked></td>' +
-            '<td style="text-align:center; border:1px solid #ddd; padding:4px;"><input type="color" class="team-color" value="#ff9800" style="width:40px; padding:0; border:none;"></td>' +
-            '<td style="border:1px solid #ddd; padding:4px;"><input type="number" class="team-win" value="0" style="width:45px; padding:3px;"></td>' +
-            '<td style="border:1px solid #ddd; padding:4px;"><input type="number" class="team-plc" value="0" style="width:45px; padding:3px;"></td>' +
-            '<td style="border:1px solid #ddd; padding:4px;"><input type="number" class="team-bonus" value="0" style="width:45px; padding:3px;"></td>' +
-            '<td style="border:1px solid #ddd; padding:4px;"><input type="number" class="team-km5" value="0" style="width:45px; padding:3px;"></td>' +
-            '<td style="border:1px solid #ddd; padding:4px;"><input type="number" class="team-km4" value="0" style="width:45px; padding:3px;"></td>' +
-            '<td style="border:1px solid #ddd; padding:4px;"><input type="number" class="team-km3" value="0" style="width:45px; padding:3px;"></td>' +
-            '<td style="border:1px solid #ddd; padding:4px;"><input type="number" class="team-km2" value="0" style="width:45px; padding:3px;"></td>' +
-            '<td style="border:1px solid #ddd; padding:4px;"><input type="number" class="team-km1" value="0" style="width:45px; padding:3px;"></td>' +
-            '<td style="border:1px solid #ddd; padding:4px;"><input type="number" class="team-alive num-input" value="4" style="width:45px; padding:3px;" min="0" max="4" step="1"></td>' +
-            '<td style="border:1px solid #ddd; padding:4px;">' +
+            // ===== ستون # =====
+            '<td class="row-number" style="text-align:center; border:1px solid #ddd; padding:4px; font-weight:bold; color:#1d2327; width:40px;">' + rowNumber + '</td>' +
+            // ===== ستون فعال =====
+            '<td style="text-align:center; border:1px solid #ddd; padding:4px; width:48px;"><input type="checkbox" class="team-active" checked></td>' +
+            // ===== ستون رنگ =====
+            '<td style="text-align:center; border:1px solid #ddd; padding:4px; width:48px;"><input type="color" class="team-color" value="#ff9800" style="width:40px; padding:0; border:none;"></td>' +
+            // ===== ستون WIN =====
+            '<td style="border:1px solid #ddd; padding:4px; width:42px;"><input type="number" class="team-win num-input" value="0" style="width:45px; padding:3px;"></td>' +
+            // ===== ستون PLC =====
+            '<td style="border:1px solid #ddd; padding:4px; width:42px;"><input type="number" class="team-plc num-input" value="0" style="width:45px; padding:3px;"></td>' +
+            // ===== ستون Bonus =====
+            '<td style="border:1px solid #ddd; padding:4px; width:48px;"><input type="number" class="team-bonus num-input" value="0" style="width:45px; padding:3px;"></td>' +
+            // ===== ستون KM5 =====
+            '<td style="border:1px solid #ddd; padding:4px; width:44px;"><input type="number" class="team-km5 num-input" value="0" style="width:45px; padding:3px;"></td>' +
+            // ===== ستون KM4 =====
+            '<td style="border:1px solid #ddd; padding:4px; width:44px;"><input type="number" class="team-km4 num-input" value="0" style="width:45px; padding:3px;"></td>' +
+            // ===== ستون KM3 =====
+            '<td style="border:1px solid #ddd; padding:4px; width:44px;"><input type="number" class="team-km3 num-input" value="0" style="width:45px; padding:3px;"></td>' +
+            // ===== ستون KM2 =====
+            '<td style="border:1px solid #ddd; padding:4px; width:44px;"><input type="number" class="team-km2 num-input" value="0" style="width:45px; padding:3px;"></td>' +
+            // ===== ستون KM1 =====
+            '<td style="border:1px solid #ddd; padding:4px; width:44px;"><input type="number" class="team-km1 num-input" value="0" style="width:45px; padding:3px;"></td>' +
+            // ===== ستون Alive =====
+            '<td style="border:1px solid #ddd; padding:4px; width:48px;"><input type="number" class="team-alive num-input" value="4" style="width:45px; padding:3px;" min="0" max="4" step="1"></td>' +
+            // ===== ستون لوگو (اصلاح‌شده: دکمه آپلود بیرون از wrap) =====
+            '<td style="border:1px solid #ddd; padding:4px; width:70px;">' +
                 '<div class="team-image-container">' +
                     '<input type="hidden" class="team-logo-id" value="">' +
                     '<div class="team-image-wrap" style="display:none; position:relative; max-width:80px; max-height:35px;">' +
                         '<div class="image-preview" style="cursor:pointer; position:relative; display:inline-block; max-height:35px; max-width:80px; border:1px solid #ddd; padding:3px; background:#fff;"></div>' +
-                        '<button type="button" class="button button-small team-image-add" style="padding:2px 8px; font-size:11px;">افزودن تصویر</button>' +
+                        '<button type="button" class="button team-image-remove-btn" style="position:absolute; top:-8px; right:-8px; background:#dc3545; color:#fff; border:none; border-radius:50%; width:20px; height:20px; line-height:20px; font-size:14px; cursor:pointer; padding:0; text-align:center; opacity:0; transition:opacity 0.2s ease;">×</button>' +
                     '</div>' +
+                    // ===== دکمه آپلود بیرون از wrap (با آیکون 📁) =====
+                    '<button type="button" class="button button-small team-image-add" style="padding:2px 8px; font-size:11px;">📁</button>' +
                 '</div>' +
             '</td>' +
-            '<td style="border:1px solid #ddd; padding:4px;"><input type="text" class="team-name" value="تیم جدید" style="width:100%; padding:3px; direction:rtl; text-align:right;"></td>' +
-            '<td style="text-align:center; border:1px solid #ddd; padding:4px;"><button type="button" class="button delete-team" style="background:#dc3545; color:#fff; border:none; padding:2px 10px; border-radius:4px; font-size:14px; cursor:pointer; line-height:24px;">✖</button></td>' +
+            // ===== ستون نام تیم =====
+            '<td style="border:1px solid #ddd; padding:4px; min-width:110px;"><input type="text" class="team-name name-input" value="تیم جدید" style="width:100%; padding:3px; direction:rtl; text-align:right;"></td>' +
+            // ===== ستون حذف =====
+            '<td style="text-align:center; border:1px solid #ddd; padding:4px; width:38px;"><button type="button" class="button delete-team" style="background:#dc3545; color:#fff; border:none; padding:2px 10px; border-radius:4px; font-size:14px; cursor:pointer; line-height:24px;">✖</button></td>' +
         '</tr>';
+
         $("#teams-tbody").append(row);
         applyShowAllTeamsState();
         showMessage("✅ تیم جدید اضافه شد.", "success");
@@ -346,13 +369,19 @@ jQuery(document).ready(function($) {
             });
             $("#lp-total-team").text(totalTeam);
             $("#lp-total-alive").text(totalAlive);
+
+            // ===== به‌روزرسانی شماره ردیف‌ها =====
+            $(".team-row").each(function(index) {
+                $(this).find(".row-number").text(index + 1);
+            });
+
             applyShowAllTeamsState();
             showMessage("✅ تیم حذف شد.", "success");
         }
     });
 
     // ============================================================
-    // ===== ذخیره تغییرات =====
+    // ===== ذخیره تغییرات (با فیلدهای current_match و promoted_teams) =====
     // ============================================================
     $(document).on("click", "#lp-save-btn", function(e) {
         e.preventDefault();
@@ -395,7 +424,9 @@ jQuery(document).ready(function($) {
             match_info: $("#lp-match").val(),
             org_logo_id: $("#lp-logo-id").val(),
             total_team: totalTeam,
-            total_alive: totalAlive
+            total_alive: totalAlive,
+            current_match: $("#lp-current-match").val(),
+            promoted_teams: $("#lp-promoted-teams").val() // ← فیلد جدید
         };
 
         var matchRows = {};
