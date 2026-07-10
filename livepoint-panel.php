@@ -337,13 +337,45 @@ add_action('wp_ajax_lp_save_panel', 'lp_save_panel_ajax');
 function lp_save_panel_ajax() {
     check_ajax_referer('lp_panel', 'nonce');
 
+    $general = $_POST['general'] ?? [];
+    $current_match = intval($general['current_match'] ?? 1);
+    if ($current_match < 1 || $current_match > 5) $current_match = 1;
+
+    // پردازش تیم‌ها
     if (isset($_POST['teams'])) {
-        update_option('lp_teams', $_POST['teams']);
+        $teams = $_POST['teams'];
+        $old_teams = get_option('lp_teams', []);
+        $new_teams = [];
+
+        foreach ($teams as $index => $t) {
+            $old_team = $old_teams[$index] ?? [];
+            $matches = $old_team['matches'] ?? [];
+
+            $km_value = intval($t['km'] ?? 0);
+            $plc_value = intval($t['plc'] ?? 0);
+            $matches[$current_match] = [
+                'km' => $km_value,
+                'plc' => $plc_value
+            ];
+
+            $new_teams[] = [
+                'active' => intval($t['active'] ?? 0),
+                'color' => sanitize_hex_color($t['color'] ?? '#ff9800'),
+                'win' => intval($t['win'] ?? 0),
+                'bonus' => intval($t['bonus'] ?? 0),
+                'alive' => intval($t['alive'] ?? 4),
+                'logo_id' => intval($t['logo_id'] ?? 0),
+                'name' => sanitize_text_field($t['name'] ?? ''),
+                'matches' => $matches
+            ];
+        }
+        update_option('lp_teams', $new_teams);
     }
+
     if (isset($_POST['general'])) {
         update_option('lp_general', $_POST['general']);
     }
-    
+
     if (isset($_POST['match_rows'])) {
         $rows = [];
         foreach ($_POST['match_rows'] as $key => $val) {
@@ -351,6 +383,23 @@ function lp_save_panel_ajax() {
             $rows[intval($match_num)] = intval($val);
         }
         update_option('lp_match_winner_rows', $rows);
+    }
+
+    // ============================================================
+    // ===== Invalidate کش بعد از ذخیره =====
+    // ============================================================
+    $cache_dir = plugin_dir_path(__FILE__) . 'cache';
+    $cache_file = $cache_dir . '/api.json';
+    if (file_exists($cache_file)) {
+        unlink($cache_file);
+    }
+    
+    // (اختیاری) تولید فایل کش جدید با درخواست غیرمسدود
+    if (function_exists('wp_remote_get')) {
+        wp_remote_get(plugin_dir_url(__FILE__) . 'api.php', array(
+            'timeout' => 1,
+            'blocking' => false
+        ));
     }
 
     wp_send_json_success();

@@ -380,6 +380,7 @@ let isFirstLoad = true;
 let previousRank = {};
 let previousValues = {};
 let previousAlive = {};
+let lastTimestamp = 0;
 
 // ===== تابع انیمیشن شمارنده =====
 function animateNumber(element, start, end, duration = 800) {
@@ -400,148 +401,158 @@ function renderTeams() {
     fetch(apiUrl + '?_=' + Date.now())
         .then(res => res.json())
         .then(data => {
-            let teams = data.teams || [];
-            const general = data.general || {};
-
-            document.getElementById('org-name').textContent = general.org || 'GRAND FINALS';
-            document.getElementById('match-name').textContent = general.match_info || 'MATCH 1';
-
-            const promoted = parseInt(general.promoted_teams) || 0;
-
-            // ===== اضافه کردن total_kills به تیم‌ها =====
-            teams = teams.map(t => ({
-                ...t,
-                kills: parseInt(t.kills) || 0,
-                total: parseInt(t.total) || 0,
-                alive: parseInt(t.alive) || 0,
-                win: parseInt(t.win) || 0,
-                plc: parseInt(t.plc) || 0,
-                total_kills: parseInt(t.total_kills) || 0 // ← مقدار مجموع کل کشته‌ها
-            }));
-
-            // ================================================================
-            // ===== مرتب‌سازی با استفاده از total_kills به جای kills =====
-            // ================================================================
-            teams.sort((a, b) => {
-                if (b.total !== a.total) return b.total - a.total;   // اولویت ۱: امتیاز کل
-                if (b.win !== a.win) return b.win - a.win;         // اولویت ۲: تعداد بردها
-                if (b.plc !== a.plc) return b.plc - a.plc;         // اولویت ۳: PLC
-                return (b.total_kills || 0) - (a.total_kills || 0); // اولویت ۴: مجموع کل کشته‌ها
-            });
-
-            const container = document.getElementById('scoreboard-rows');
-            const topTeams = teams.slice(0, 37);
-
-            const newlyEliminated = {};
-            topTeams.forEach((team) => {
-                const prevAlive = previousAlive[team.name];
-                if (prevAlive !== undefined && prevAlive > 0 && team.alive === 0) {
-                    newlyEliminated[team.name] = true;
-                }
-            });
-
-            let html = '';
-            topTeams.forEach((team, index) => {
-                const rankClass = index === 0 ? 'rank-apex top1' : 'rank-apex';
-                const logoUrl = team.logo || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-
-                let dots = '';
-                for (let i = 0; i < 4; i++) {
-                    const isDead = i >= team.alive;
-                    dots += `<div class="alive-dot ${isDead ? 'dead' : ''}"></div>`;
-                }
-
-                let extraClass = '';
-                if (isFirstLoad) {
-                    extraClass = ' entering';
-                }
-
-                const isEliminated = newlyEliminated[team.name] || false;
-                if (isEliminated) extraClass += ' eliminated';
-
-                html += `
-                    <div class="row-apex${extraClass}" data-team="${team.name}" style="animation-delay: ${0.04 * index}s">
-                        ${isEliminated ? '<div class="eliminate-bar">ELIMINATED</div>' : ''}
-                        <div class="${rankClass}">${index + 1}</div>
-                        <div class="logo-apex"><img src="${logoUrl}" alt="${team.name}"></div>
-                        <div class="team-name-apex">${team.name || '---'}</div>
-                        <div class="alive-bar-apex">${dots}</div>
-                        <div class="stat-apex" id="pts-${index}">${team.total}</div>
-                        <div class="stat-apex kills" id="kills-${index}">${team.kills}</div>
-                    </div>
-                `;
-
-                if (promoted > 0 && index === promoted - 1 && index < topTeams.length - 1) {
-                    html += `<div class="promotion-divider"></div>`;
-                }
-            });
-
-            container.innerHTML = html;
-
-            // ===== حذف نوار پس از ۲.۶ ثانیه =====
-            setTimeout(() => {
-                document.querySelectorAll('.row-apex.eliminated').forEach(row => {
-                    row.classList.add('fade-out');
-                    setTimeout(() => {
-                        row.classList.remove('eliminated', 'fade-out');
-                    }, 700);
-                });
-            }, 2600);
-
-            // ===== انیمیشن شمارنده =====
-            topTeams.forEach((team, index) => {
-                const ptsId = 'pts-' + index;
-                const killsId = 'kills-' + index;
-                const ptsEl = document.getElementById(ptsId);
-                const killsEl = document.getElementById(killsId);
-
-                const prevPts = previousValues[team.name + '-pts'] ?? 0;
-                const prevKills = previousValues[team.name + '-kills'] ?? 0;
-                const newPts = team.total;
-                const newKills = team.kills;
-
-                if (ptsEl) {
-                    const isFirstTimePts = !previousValues.hasOwnProperty(team.name + '-pts');
-                    const currentPts = parseInt(ptsEl.textContent) || 0;
-                    if (currentPts !== prevPts || isFirstTimePts) {
-                        ptsEl.textContent = prevPts;
-                    }
-                    if (prevPts !== newPts || isFirstTimePts) {
-                        animateNumber(ptsEl, prevPts, newPts);
-                    }
-                }
-
-                if (killsEl) {
-                    const isFirstTimeKills = !previousValues.hasOwnProperty(team.name + '-kills');
-                    const currentKills = parseInt(killsEl.textContent) || 0;
-                    if (currentKills !== prevKills || isFirstTimeKills) {
-                        killsEl.textContent = prevKills;
-                    }
-                    if (prevKills !== newKills || isFirstTimeKills) {
-                        animateNumber(killsEl, prevKills, newKills);
-                    }
-                }
-
-                previousValues[team.name + '-pts'] = newPts;
-                previousValues[team.name + '-kills'] = newKills;
-            });
-
-            previousRank = {};
-            previousAlive = {};
-            topTeams.forEach((team, index) => {
-                previousRank[team.name] = index;
-                previousAlive[team.name] = team.alive;
-            });
-
-            if (isFirstLoad) {
+            // ===== چک هوشمند: فقط در صورت تغییر داده‌ها آپدیت کن =====
+            const newTimestamp = data.timestamp || Date.now();
+            if (newTimestamp > lastTimestamp || isFirstLoad) {
+                lastTimestamp = newTimestamp;
                 isFirstLoad = false;
-                setTimeout(() => document.querySelectorAll('.row-apex.entering').forEach(el => el.classList.remove('entering')), 600);
-            }
 
+                let teams = data.teams || [];
+                const general = data.general || {};
+
+                document.getElementById('org-name').textContent = general.org || 'GRAND FINALS';
+                document.getElementById('match-name').textContent = general.match_info || 'MATCH 1';
+
+                const promoted = parseInt(general.promoted_teams) || 0;
+
+                teams = teams.map(t => ({
+                    ...t,
+                    kills: parseInt(t.kills) || 0,
+                    total: parseInt(t.total) || 0,
+                    alive: parseInt(t.alive) || 0,
+                    win: parseInt(t.win) || 0,
+                    plc: parseInt(t.plc) || 0
+                }));
+
+                teams.sort((a, b) => {
+                    if (b.total !== a.total) return b.total - a.total;
+                    if (b.win !== a.win) return b.win - a.win;
+                    if (b.plc !== a.plc) return b.plc - a.plc;
+                    return b.kills - a.kills;
+                });
+
+                const container = document.getElementById('scoreboard-rows');
+                const topTeams = teams.slice(0, 37);
+
+                const rankUp = {};
+                topTeams.forEach((team, index) => {
+                    const prev = previousRank[team.name];
+                    if (prev !== undefined && prev > index) rankUp[team.name] = true;
+                });
+
+                const newlyEliminated = {};
+                topTeams.forEach((team) => {
+                    const prevAlive = previousAlive[team.name];
+                    if (prevAlive !== undefined && prevAlive > 0 && team.alive === 0) {
+                        newlyEliminated[team.name] = true;
+                    }
+                });
+
+                let html = '';
+                topTeams.forEach((team, index) => {
+                    const rankClass = index === 0 ? 'rank-apex top1' : 'rank-apex';
+                    const logoUrl = team.logo || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+
+                    let dots = '';
+                    for (let i = 0; i < 4; i++) {
+                        const isDead = i >= team.alive;
+                        dots += `<div class="alive-dot ${isDead ? 'dead' : ''}"></div>`;
+                    }
+
+                    let extraClass = '';
+                    if (isFirstLoad) {
+                        extraClass = ' entering';
+                    } else if (rankUp[team.name]) {
+                        extraClass = ' rank-up';
+                    }
+
+                    const isEliminated = newlyEliminated[team.name] || false;
+                    if (isEliminated) extraClass += ' eliminated';
+
+                    html += `
+                        <div class="row-apex${extraClass}" data-team="${team.name}" style="animation-delay: ${0.04 * index}s">
+                            ${isEliminated ? '<div class="eliminate-bar">ELIMINATED</div>' : ''}
+                            <div class="${rankClass}">${index + 1}</div>
+                            <div class="logo-apex"><img src="${logoUrl}" alt="${team.name}"></div>
+                            <div class="team-name-apex">${team.name || '---'}</div>
+                            <div class="alive-bar-apex">${dots}</div>
+                            <div class="stat-apex" id="pts-${index}">${team.total}</div>
+                            <div class="stat-apex kills" id="kills-${index}">${team.kills}</div>
+                        </div>
+                    `;
+
+                    if (promoted > 0 && index === promoted - 1 && index < topTeams.length - 1) {
+                        html += `<div class="promotion-divider"></div>`;
+                    }
+                });
+
+                container.innerHTML = html;
+
+                // ===== حذف نوار پس از ۲.۶ ثانیه =====
+                setTimeout(() => {
+                    document.querySelectorAll('.row-apex.eliminated').forEach(row => {
+                        row.classList.add('fade-out');
+                        setTimeout(() => {
+                            row.classList.remove('eliminated', 'fade-out');
+                        }, 700);
+                    });
+                }, 2600);
+
+                // ===== انیمیشن شمارنده =====
+                topTeams.forEach((team, index) => {
+                    const ptsId = 'pts-' + index;
+                    const killsId = 'kills-' + index;
+                    const ptsEl = document.getElementById(ptsId);
+                    const killsEl = document.getElementById(killsId);
+
+                    const prevPts = previousValues[team.name + '-pts'] ?? 0;
+                    const prevKills = previousValues[team.name + '-kills'] ?? 0;
+                    const newPts = team.total;
+                    const newKills = team.kills;
+
+                    if (ptsEl) {
+                        const isFirstTimePts = !previousValues.hasOwnProperty(team.name + '-pts');
+                        const currentPts = parseInt(ptsEl.textContent) || 0;
+                        if (currentPts !== prevPts || isFirstTimePts) {
+                            ptsEl.textContent = prevPts;
+                        }
+                        if (prevPts !== newPts || isFirstTimePts) {
+                            animateNumber(ptsEl, prevPts, newPts);
+                        }
+                    }
+
+                    if (killsEl) {
+                        const isFirstTimeKills = !previousValues.hasOwnProperty(team.name + '-kills');
+                        const currentKills = parseInt(killsEl.textContent) || 0;
+                        if (currentKills !== prevKills || isFirstTimeKills) {
+                            killsEl.textContent = prevKills;
+                        }
+                        if (prevKills !== newKills || isFirstTimeKills) {
+                            animateNumber(killsEl, prevKills, newKills);
+                        }
+                    }
+
+                    previousValues[team.name + '-pts'] = newPts;
+                    previousValues[team.name + '-kills'] = newKills;
+                });
+
+                previousRank = {};
+                previousAlive = {};
+                topTeams.forEach((team, index) => {
+                    previousRank[team.name] = index;
+                    previousAlive[team.name] = team.alive;
+                });
+
+                if (isFirstLoad) {
+                    isFirstLoad = false;
+                    setTimeout(() => document.querySelectorAll('.row-apex.entering').forEach(el => el.classList.remove('entering')), 600);
+                }
+
+            } // end of if (newTimestamp > lastTimestamp)
         })
         .catch(err => console.error('❌ خطا:', err));
 
-    setTimeout(renderTeams, 2000);
+    setTimeout(renderTeams, 1500); // ← ۱۵۰۰ میلی‌ثانیه
 }
 
 renderTeams();
