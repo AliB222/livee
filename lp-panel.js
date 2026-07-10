@@ -124,7 +124,7 @@ jQuery(document).ready(function($) {
     $(document).on("click", "#reset-all-btn", function(e) {
         e.preventDefault();
         if (confirm("⚠️ همه مقادیر (به جز نام و لوگو) ریست شوند؟")) {
-            $(".team-win, .team-plc, .team-bonus, .team-km5, .team-km4, .team-km3, .team-km2, .team-km1").val(0);
+            $(".team-win, .team-km, .team-plc, .team-bonus").val(0);
             $(".team-alive").val(4).removeClass("dead").css("background-color", "");
             $(".team-name").val("");
             $(".team-image-container").each(function() {
@@ -134,10 +134,44 @@ jQuery(document).ready(function($) {
                 $(this).find(".team-image-add").show();
             });
             $(".team-row").removeClass("dead");
+            
+            $(".team-row").each(function() {
+                var matches = {};
+                for (var i = 1; i <= 5; i++) {
+                    matches[i] = { km: 0, plc: 0 };
+                }
+                $(this).data('matches', matches);
+                var currentMatch = parseInt($("#lp-current-match").val()) || 1;
+                $(this).find(".team-km").val(0);
+                $(this).find(".team-plc").val(0);
+            });
+            
             applyShowAllTeamsState();
             showMessage("✅ همه مقادیر ریست شدند.", "success");
         }
         $(this).blur();
+    });
+
+    // ============================================================
+    // ===== به‌روزرسانی KM و PLC با تغییر شماره مچ =====
+    // ============================================================
+    function updateMatchFields() {
+        var match = parseInt($("#lp-current-match").val()) || 1;
+        if (match < 1) match = 1;
+        if (match > 5) match = 5;
+        $("#lp-current-match").val(match);
+
+        $(".team-row").each(function() {
+            var matches = $(this).data('matches');
+            if (matches && matches[match]) {
+                $(this).find(".team-km").val(matches[match].km || 0);
+                $(this).find(".team-plc").val(matches[match].plc || 0);
+            }
+        });
+    }
+
+    $(document).on("change", "#lp-current-match", function() {
+        updateMatchFields();
     });
 
     // ===== مدیریت ستون‌ها =====
@@ -302,39 +336,27 @@ jQuery(document).ready(function($) {
     });
 
     // ============================================================
-    // ===== اضافه و حذف تیم (نسخه اصلاح‌شده با دکمه آپلود صحیح) =====
+    // ===== اضافه و حذف تیم (با پشتیبانی از user_id) =====
     // ============================================================
     $("#add-team-btn").on("click", function() {
         $("#no-teams-row").remove();
         var index = $(".team-row").length;
         var rowNumber = index + 1;
 
-        var row = '<tr class="team-row" data-index="' + index + '">' +
-            // ===== ستون # =====
+        var matchesData = {};
+        for (var i = 1; i <= 5; i++) {
+            matchesData[i] = { km: 0, plc: 0 };
+        }
+
+        var row = '<tr class="team-row" data-index="' + index + '" data-matches=\'' + JSON.stringify(matchesData) + '\'>' +
             '<td class="row-number" style="text-align:center; border:1px solid #ddd; padding:4px; font-weight:bold; color:#1d2327; width:40px;">' + rowNumber + '</td>' +
-            // ===== ستون فعال =====
             '<td style="text-align:center; border:1px solid #ddd; padding:4px; width:48px;"><input type="checkbox" class="team-active" checked></td>' +
-            // ===== ستون رنگ =====
             '<td style="text-align:center; border:1px solid #ddd; padding:4px; width:48px;"><input type="color" class="team-color" value="#ff9800" style="width:40px; padding:0; border:none;"></td>' +
-            // ===== ستون WIN =====
             '<td style="border:1px solid #ddd; padding:4px; width:42px;"><input type="number" class="team-win num-input" value="0" style="width:45px; padding:3px;"></td>' +
-            // ===== ستون PLC =====
+            '<td style="border:1px solid #ddd; padding:4px; width:42px;"><input type="number" class="team-km num-input" value="0" style="width:45px; padding:3px;"></td>' +
             '<td style="border:1px solid #ddd; padding:4px; width:42px;"><input type="number" class="team-plc num-input" value="0" style="width:45px; padding:3px;"></td>' +
-            // ===== ستون Bonus =====
             '<td style="border:1px solid #ddd; padding:4px; width:48px;"><input type="number" class="team-bonus num-input" value="0" style="width:45px; padding:3px;"></td>' +
-            // ===== ستون KM5 =====
-            '<td style="border:1px solid #ddd; padding:4px; width:44px;"><input type="number" class="team-km5 num-input" value="0" style="width:45px; padding:3px;"></td>' +
-            // ===== ستون KM4 =====
-            '<td style="border:1px solid #ddd; padding:4px; width:44px;"><input type="number" class="team-km4 num-input" value="0" style="width:45px; padding:3px;"></td>' +
-            // ===== ستون KM3 =====
-            '<td style="border:1px solid #ddd; padding:4px; width:44px;"><input type="number" class="team-km3 num-input" value="0" style="width:45px; padding:3px;"></td>' +
-            // ===== ستون KM2 =====
-            '<td style="border:1px solid #ddd; padding:4px; width:44px;"><input type="number" class="team-km2 num-input" value="0" style="width:45px; padding:3px;"></td>' +
-            // ===== ستون KM1 =====
-            '<td style="border:1px solid #ddd; padding:4px; width:44px;"><input type="number" class="team-km1 num-input" value="0" style="width:45px; padding:3px;"></td>' +
-            // ===== ستون Alive =====
             '<td style="border:1px solid #ddd; padding:4px; width:48px;"><input type="number" class="team-alive num-input" value="4" style="width:45px; padding:3px;" min="0" max="4" step="1"></td>' +
-            // ===== ستون لوگو (اصلاح‌شده: دکمه آپلود بیرون از wrap) =====
             '<td style="border:1px solid #ddd; padding:4px; width:70px;">' +
                 '<div class="team-image-container">' +
                     '<input type="hidden" class="team-logo-id" value="">' +
@@ -342,17 +364,16 @@ jQuery(document).ready(function($) {
                         '<div class="image-preview" style="cursor:pointer; position:relative; display:inline-block; max-height:35px; max-width:80px; border:1px solid #ddd; padding:3px; background:#fff;"></div>' +
                         '<button type="button" class="button team-image-remove-btn" style="position:absolute; top:-8px; right:-8px; background:#dc3545; color:#fff; border:none; border-radius:50%; width:20px; height:20px; line-height:20px; font-size:14px; cursor:pointer; padding:0; text-align:center; opacity:0; transition:opacity 0.2s ease;">×</button>' +
                     '</div>' +
-                    // ===== دکمه آپلود بیرون از wrap (با آیکون 📁) =====
                     '<button type="button" class="button button-small team-image-add" style="padding:2px 8px; font-size:11px;">📁</button>' +
                 '</div>' +
             '</td>' +
-            // ===== ستون نام تیم =====
             '<td style="border:1px solid #ddd; padding:4px; min-width:110px;"><input type="text" class="team-name name-input" value="تیم جدید" style="width:100%; padding:3px; direction:rtl; text-align:right;"></td>' +
-            // ===== ستون حذف =====
             '<td style="text-align:center; border:1px solid #ddd; padding:4px; width:38px;"><button type="button" class="button delete-team" style="background:#dc3545; color:#fff; border:none; padding:2px 10px; border-radius:4px; font-size:14px; cursor:pointer; line-height:24px;">✖</button></td>' +
         '</tr>';
 
         $("#teams-tbody").append(row);
+        var currentMatch = parseInt($("#lp-current-match").val()) || 1;
+        updateMatchFields();
         applyShowAllTeamsState();
         showMessage("✅ تیم جدید اضافه شد.", "success");
         $(this).blur();
@@ -370,7 +391,6 @@ jQuery(document).ready(function($) {
             $("#lp-total-team").text(totalTeam);
             $("#lp-total-alive").text(totalAlive);
 
-            // ===== به‌روزرسانی شماره ردیف‌ها =====
             $(".team-row").each(function(index) {
                 $(this).find(".row-number").text(index + 1);
             });
@@ -381,7 +401,7 @@ jQuery(document).ready(function($) {
     });
 
     // ============================================================
-    // ===== ذخیره تغییرات (با فیلدهای current_match و promoted_teams) =====
+    // ===== ذخیره تغییرات (با ارسال user_id) =====
     // ============================================================
     $(document).on("click", "#lp-save-btn", function(e) {
         e.preventDefault();
@@ -406,13 +426,9 @@ jQuery(document).ready(function($) {
                 active: active,
                 color: $(this).find(".team-color").val(),
                 win: parseInt($(this).find(".team-win").val()) || 0,
+                km: parseInt($(this).find(".team-km").val()) || 0,
                 plc: parseInt($(this).find(".team-plc").val()) || 0,
                 bonus: parseInt($(this).find(".team-bonus").val()) || 0,
-                km5: parseInt($(this).find(".team-km5").val()) || 0,
-                km4: parseInt($(this).find(".team-km4").val()) || 0,
-                km3: parseInt($(this).find(".team-km3").val()) || 0,
-                km2: parseInt($(this).find(".team-km2").val()) || 0,
-                km1: parseInt($(this).find(".team-km1").val()) || 0,
                 alive: alive,
                 logo_id: $(this).find(".team-logo-id").val(),
                 name: $(this).find(".team-name").val()
@@ -426,7 +442,7 @@ jQuery(document).ready(function($) {
             total_team: totalTeam,
             total_alive: totalAlive,
             current_match: $("#lp-current-match").val(),
-            promoted_teams: $("#lp-promoted-teams").val() // ← فیلد جدید
+            promoted_teams: $("#lp-promoted-teams").val()
         };
 
         var matchRows = {};
@@ -443,7 +459,8 @@ jQuery(document).ready(function($) {
             teams: teams,
             general: general,
             match_rows: matchRows,
-            nonce: lp_ajax.nonce
+            nonce: lp_ajax.nonce,
+            user_id: lp_ajax.user_id // ← ارسال user_id
         }, function(res) {
             btn.val("💾 ذخیره همه تغییرات").prop("disabled", false);
             if (res.success) {
@@ -452,7 +469,7 @@ jQuery(document).ready(function($) {
                 $("#lp-total-alive").text(totalAlive);
                 localStorage.setItem('lp_header_update', Date.now().toString());
                 localStorage.setItem('lp_match_logos_update', Date.now().toString());
-                console.log('📢 تغییرات ذخیره شد و به صفحات دیگر اطلاع داده شد.');
+                console.log('📢 تغییرات ذخیره شد.');
                 applyShowAllTeamsState();
             } else {
                 showMessage("❌ خطا: " + (res.data || "نامشخص"), "error");
@@ -464,7 +481,7 @@ jQuery(document).ready(function($) {
     });
 
     // ============================================================
-    // ===== زنده/مرده بودن تیم‌ها (با تغییر رنگ لحظه‌ای) =====
+    // ===== زنده/مرده بودن تیم‌ها =====
     // ============================================================
     $(document).on("change", ".team-alive", function() {
         var val = parseInt($(this).val()) || 0;
@@ -493,4 +510,5 @@ jQuery(document).ready(function($) {
     applyColumnStates();
     addResetColumnsButton();
     applyShowAllTeamsState();
+    updateMatchFields();
 });

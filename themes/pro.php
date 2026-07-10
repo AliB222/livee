@@ -375,7 +375,11 @@ require_once( dirname(__FILE__) . '/../../../../wp-load.php' );
     </div>
 </div>
 <script>
-const apiUrl = 'http://localhost/livepoint/wp-content/plugins/livePoint/api.php';
+// ===== دریافت user_id از پارامتر URL =====
+const urlParams = new URLSearchParams(window.location.search);
+const userId = urlParams.get('user_id') || '0';
+const apiUrl = 'http://localhost/livepoint/wp-content/plugins/livePoint/api.php?user_id=' + userId;
+
 let isFirstLoad = true;
 let previousRank = {};
 let previousValues = {};
@@ -398,10 +402,14 @@ function animateNumber(element, start, end, duration = 800) {
 }
 
 function renderTeams() {
-    fetch(apiUrl + '?_=' + Date.now())
+    fetch(apiUrl + '&_=' + Date.now())
         .then(res => res.json())
         .then(data => {
-            // ===== چک هوشمند: فقط در صورت تغییر داده‌ها آپدیت کن =====
+            if (data.error) {
+                console.error('❌ ' + data.error);
+                return;
+            }
+            
             const newTimestamp = data.timestamp || Date.now();
             if (newTimestamp > lastTimestamp || isFirstLoad) {
                 lastTimestamp = newTimestamp;
@@ -488,7 +496,6 @@ function renderTeams() {
 
                 container.innerHTML = html;
 
-                // ===== حذف نوار پس از ۲.۶ ثانیه =====
                 setTimeout(() => {
                     document.querySelectorAll('.row-apex.eliminated').forEach(row => {
                         row.classList.add('fade-out');
@@ -548,11 +555,11 @@ function renderTeams() {
                     setTimeout(() => document.querySelectorAll('.row-apex.entering').forEach(el => el.classList.remove('entering')), 600);
                 }
 
-            } // end of if (newTimestamp > lastTimestamp)
+            }
         })
         .catch(err => console.error('❌ خطا:', err));
 
-    setTimeout(renderTeams, 1500); // ← ۱۵۰۰ میلی‌ثانیه
+    setTimeout(renderTeams, 1500);
 }
 
 renderTeams();

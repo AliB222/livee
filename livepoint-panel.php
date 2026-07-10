@@ -1,11 +1,35 @@
 <?php
 /**
- * LivePoint Panel - نسخه نهایی با ستون ردیف، چک‌باکس نمایش همه تیم‌ها، لوگوهای قابل کلیک و فیلدهای کنار Reset Alive
+ * LivePoint Panel - نسخه چند کاربره با احراز هویت
  */
 if (!defined('ABSPATH')) exit;
 
 // ============================================================
-// بارگذاری اسکریپت‌ها
+// ===== بررسی احراز هویت =====
+// ============================================================
+session_start();
+$user_id = intval($_SESSION['user_id'] ?? 0);
+if ($user_id === 0) {
+    wp_die('دسترسی غیرمجاز. لطفاً وارد شوید. <a href="' . plugin_dir_url(__FILE__) . 'login.php">ورود</a>');
+}
+
+global $wpdb;
+$table_name = $wpdb->prefix . 'lp_users';
+$user = $wpdb->get_row($wpdb->prepare(
+    "SELECT * FROM {$table_name} WHERE id = %d",
+    $user_id
+));
+
+if (!$user) {
+    session_destroy();
+    wp_die('کاربر یافت نشد. <a href="' . plugin_dir_url(__FILE__) . 'login.php">ورود مجدد</a>');
+}
+
+define('CURRENT_USER_ID', $user_id);
+define('CURRENT_USERNAME', $user->username);
+
+// ============================================================
+// ===== بارگذاری اسکریپت‌ها =====
 // ============================================================
 add_action('admin_enqueue_scripts', 'lp_panel_enqueue_scripts');
 function lp_panel_enqueue_scripts($hook) {
@@ -18,18 +42,19 @@ function lp_panel_enqueue_scripts($hook) {
         'lp-panel-script',
         plugin_dir_url(__FILE__) . 'lp-panel.js',
         array('jquery', 'media-upload'),
-        '1.9',
+        '2.2',
         true
     );
     
     wp_localize_script('lp-panel-script', 'lp_ajax', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
-        'nonce'   => wp_create_nonce('lp_panel')
+        'nonce'   => wp_create_nonce('lp_panel'),
+        'user_id' => CURRENT_USER_ID
     ));
 }
 
 // ============================================================
-// منوی ادمین
+// ===== منوی ادمین =====
 // ============================================================
 add_action('admin_menu', 'lp_panel_menu');
 function lp_panel_menu() {
@@ -45,12 +70,30 @@ function lp_panel_menu() {
 }
 
 // ============================================================
-// صفحه مدیریت (HTML)
+// ===== صفحه مدیریت (HTML) =====
 // ============================================================
 function lp_panel_page() {
-    $general = get_option('lp_general', []);
-    $teams = get_option('lp_teams', []);
-    $match_winner_rows = get_option('lp_match_winner_rows', []);
+    // ===== دریافت داده‌های این کاربر =====
+    $all_teams = get_option('lp_teams', []);
+    $teams = array_filter($all_teams, function($t) {
+        return intval($t['user_id'] ?? 0) === CURRENT_USER_ID;
+    });
+    $teams = array_values($teams); // بازنویسی ایندکس‌ها
+    
+    $all_general = get_option('lp_general', []);
+    $general_temp = array_filter($all_general, function($g) {
+        return intval($g['user_id'] ?? 0) === CURRENT_USER_ID;
+    });
+    $general = reset($general_temp) ?: [];
+    
+    $all_match_winner_rows = get_option('lp_match_winner_rows', []);
+    $match_winner_rows_temp = array_filter($all_match_winner_rows, function($m) {
+        return intval($m['user_id'] ?? 0) === CURRENT_USER_ID;
+    });
+    $match_winner_rows = reset($match_winner_rows_temp) ?: [];
+    
+    $current_match = intval($general['current_match'] ?? 1);
+    if ($current_match < 1 || $current_match > 5) $current_match = 1;
     
     $org_logo_url = '';
     if (!empty($general['org_logo_id'])) {
@@ -95,7 +138,6 @@ function lp_panel_page() {
             .lp-btn-save:hover { background:#135e96; }
             .lp-btn-save:disabled { opacity:0.7; cursor:not-allowed; }
             
-            /* ===== دکمه حذف لوگو (فقط در هاور نمایش داده شود) ===== */
             .lp-image-remove-btn,
             .team-image-remove-btn {
                 opacity: 0;
@@ -105,8 +147,6 @@ function lp_panel_page() {
             .team-image-wrap:hover .team-image-remove-btn {
                 opacity: 1;
             }
-
-            /* ===== استایل فیلدهای کوچک کنار Reset Alive ===== */
             .inline-field {
                 display: inline-flex;
                 align-items: center;
@@ -142,9 +182,13 @@ function lp_panel_page() {
             }
         </style>
 
-        <!-- ===== هدر بدون دکمه ===== -->
+        <!-- ===== هدر ===== -->
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:20px;">
             <h1 style="font-size:24px; font-weight:700; color:#1d2327; margin:0;">🏆 LIVE POINT</h1>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span style="color:#666; font-size:13px;">👤 <?php echo esc_html(CURRENT_USERNAME); ?></span>
+                <a href="<?php echo plugin_dir_url(__FILE__); ?>login.php?logout=1" style="color:#dc3545; text-decoration:none; font-size:13px;">خروج</a>
+            </div>
         </div>
 
         <div id="lp-message" class="lp-message"></div>
@@ -177,13 +221,31 @@ function lp_panel_page() {
                             <button type="button" class="lp-image-add" style="<?php echo empty($org_logo_url) ? '' : 'display:none;'; ?>">📁 انتخاب تصویر</button>
                         </div>
                     </div>
+                    <div class="lp-field" style="flex:0 1 100px;">
+                        <label>شماره مچ فعلی</label>
+                        <input type="number" id="lp-current-match" value="<?php echo esc_attr($current_match); ?>" min="1" max="5" step="1">
+                        <div style="font-size:11px; color:#888; margin-top:4px;">مچ ۱ تا ۵</div>
+                    </div>
+                    <div class="lp-field" style="flex:0 1 100px;">
+                        <label>تعداد تیم‌های صعود کننده</label>
+                        <input type="number" id="lp-promoted-teams" value="<?php echo esc_attr($general['promoted_teams'] ?? 0); ?>" min="0" max="50" step="1">
+                        <div style="font-size:11px; color:#888; margin-top:4px;">۰ = بدون خط</div>
+                    </div>
                     <div class="lp-field" style="flex:0 1 120px;">
                         <label>تعداد تیم‌های زنده</label>
-                        <div id="lp-total-team" style="font-size:28px; font-weight:700; color:#1d2327; padding:4px 0;"><?php echo esc_attr($general['total_team'] ?? 0); ?></div>
+                        <div id="lp-total-team" style="font-size:28px; font-weight:700; color:#1d2327; padding:4px 0;"><?php echo esc_attr(count($teams)); ?></div>
                     </div>
                     <div class="lp-field" style="flex:0 1 120px;">
                         <label>مجموع Alive</label>
-                        <div id="lp-total-alive" style="font-size:28px; font-weight:700; color:#1d2327; padding:4px 0;"><?php echo esc_attr($general['total_alive'] ?? 0); ?></div>
+                        <div id="lp-total-alive" style="font-size:28px; font-weight:700; color:#1d2327; padding:4px 0;">
+                            <?php 
+                            $total_alive = 0;
+                            foreach ($teams as $t) {
+                                $total_alive += intval($t['alive'] ?? 0);
+                            }
+                            echo $total_alive;
+                            ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -193,35 +255,12 @@ function lp_panel_page() {
                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:15px;">
                     <h2 style="margin:0; font-size:18px; font-weight:600; color:#1d2327;">👥 لیست تیم‌ها</h2>
                     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                        <!-- ===== Reset Alive (4) ===== -->
                         <a href="#" id="reset-alive-btn" style="background:#e8f5e9; color:#2e7d32; border-color:#a5d6a7; padding:6px 16px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; cursor:pointer; border:1px solid #ddd; display:inline-block;">🔄 Reset Alive (4)</a>
-
-                        <!-- ===== فیلد شماره مچ فعلی (کنار Reset Alive) ===== -->
-                        <div class="inline-field">
-                            <label for="lp-current-match">مچ:</label>
-                            <input type="number" id="lp-current-match" value="<?php echo esc_attr($general['current_match'] ?? 1); ?>" min="1" max="5" step="1">
-                            <span class="hint">(۱-۵)</span>
-                        </div>
-
-                        <!-- ===== فیلد تعداد تیم‌های صعود کننده (کنار Reset Alive) ===== -->
-                        <div class="inline-field">
-                            <label for="lp-promoted-teams">صعود:</label>
-                            <input type="number" id="lp-promoted-teams" value="<?php echo esc_attr($general['promoted_teams'] ?? 0); ?>" min="0" max="50" step="1">
-                            <span class="hint">(۰=بدون خط)</span>
-                        </div>
-
-                        <!-- ===== Reset All ===== -->
                         <a href="#" id="reset-all-btn" style="background:#ffebee; color:#c62828; border-color:#ef9a9a; padding:6px 16px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; cursor:pointer; border:1px solid #ddd; display:inline-block;">🔄 Reset All</a>
-
-                        <!-- ===== چک‌باکس نمایش همه تیم‌ها ===== -->
                         <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:#e3f2fd; padding:6px 16px; border-radius:6px; border:1px solid #90caf9; font-size:13px; font-weight:500; color:#0d47a1;">
                             <input type="checkbox" id="show-all-teams-checkbox"> نمایش همه تیم‌ها
                         </label>
-
-                        <!-- ===== سطر جدید ===== -->
                         <button type="button" id="add-team-btn" class="button button-primary">➕ سطر جدید</button>
-
-                        <!-- ===== نمایش همه ستون‌ها ===== -->
                         <button type="button" id="reset-columns-btn" class="button" style="font-size:12px; padding:4px 12px;">👁️ نمایش همه ستون‌ها</button>
                     </div>
                 </div>
@@ -234,13 +273,9 @@ function lp_panel_page() {
                                 <th style="width:48px;">فعال</th>
                                 <th style="width:48px;">رنگ</th>
                                 <th style="width:42px;">WIN</th>
+                                <th style="width:42px;">KM</th>
                                 <th style="width:42px;">PLC</th>
                                 <th style="width:48px;">Bonus</th>
-                                <th style="width:44px;">KM5</th>
-                                <th style="width:44px;">KM4</th>
-                                <th style="width:44px;">KM3</th>
-                                <th style="width:44px;">KM2</th>
-                                <th style="width:44px;">KM1</th>
                                 <th style="width:48px;">Alive</th>
                                 <th style="width:70px;">لوگو</th>
                                 <th style="min-width:110px;">نام تیم</th>
@@ -250,7 +285,7 @@ function lp_panel_page() {
                         <tbody id="teams-tbody">
                             <?php if (empty($teams)): ?>
                             <tr id="no-teams-row">
-                                <td colspan="15" style="text-align:center; padding:30px; color:#888;">هیچ تیمی وجود ندارد.</td>
+                                <td colspan="11" style="text-align:center; padding:30px; color:#888;">هیچ تیمی وجود ندارد.</td>
                             </tr>
                             <?php else: ?>
                             <?php $row_num = 1; foreach ($teams as $index => $t): 
@@ -261,19 +296,28 @@ function lp_panel_page() {
                                 }
                                 $dead_class = (intval($t['alive'] ?? 0) < 1) ? 'dead' : '';
                                 $hidden_class = (intval($t['alive'] ?? 0) < 1) ? 'lp-row-hidden' : '';
+                                
+                                $matches = $t['matches'] ?? [];
+                                $km_value = intval($matches[$current_match]['km'] ?? 0);
+                                $plc_value = intval($matches[$current_match]['plc'] ?? 0);
+                                
+                                $data_matches = [];
+                                for ($i = 1; $i <= 5; $i++) {
+                                    $data_matches[$i] = [
+                                        'km' => intval($matches[$i]['km'] ?? 0),
+                                        'plc' => intval($matches[$i]['plc'] ?? 0)
+                                    ];
+                                }
+                                $data_matches_json = htmlspecialchars(json_encode($data_matches), ENT_QUOTES, 'UTF-8');
                             ?>
-                            <tr class="team-row <?php echo $dead_class; ?> <?php echo $hidden_class; ?>" data-index="<?php echo $index; ?>">
+                            <tr class="team-row <?php echo $dead_class; ?> <?php echo $hidden_class; ?>" data-index="<?php echo $index; ?>" data-matches='<?php echo $data_matches_json; ?>'>
                                 <td class="row-number"><?php echo $row_num++; ?></td>
                                 <td><input type="checkbox" class="team-active" <?php echo !empty($t['active']) ? 'checked' : ''; ?>></td>
                                 <td><input type="color" class="team-color" value="<?php echo esc_attr($t['color'] ?? '#ff9800'); ?>" style="width:32px; height:24px; padding:0; border:none; cursor:pointer;"></td>
                                 <td><input type="number" class="team-win num-input" value="<?php echo esc_attr($t['win'] ?? 0); ?>"></td>
-                                <td><input type="number" class="team-plc num-input" value="<?php echo esc_attr($t['plc'] ?? 0); ?>"></td>
+                                <td><input type="number" class="team-km num-input" value="<?php echo esc_attr($km_value); ?>"></td>
+                                <td><input type="number" class="team-plc num-input" value="<?php echo esc_attr($plc_value); ?>"></td>
                                 <td><input type="number" class="team-bonus num-input" value="<?php echo esc_attr($t['bonus'] ?? 0); ?>"></td>
-                                <td><input type="number" class="team-km5 num-input" value="<?php echo esc_attr($t['km5'] ?? 0); ?>"></td>
-                                <td><input type="number" class="team-km4 num-input" value="<?php echo esc_attr($t['km4'] ?? 0); ?>"></td>
-                                <td><input type="number" class="team-km3 num-input" value="<?php echo esc_attr($t['km3'] ?? 0); ?>"></td>
-                                <td><input type="number" class="team-km2 num-input" value="<?php echo esc_attr($t['km2'] ?? 0); ?>"></td>
-                                <td><input type="number" class="team-km1 num-input" value="<?php echo esc_attr($t['km1'] ?? 0); ?>"></td>
                                 <td>
                                     <input type="number" class="team-alive num-input <?php echo $dead_class; ?>" value="<?php echo esc_attr($t['alive'] ?? 4); ?>" min="0" max="4" step="1">
                                 </td>
@@ -331,11 +375,17 @@ function lp_panel_page() {
 }
 
 // ============================================================
-// ===== AJAX Handler با Invalidation کش =====
+// ===== AJAX Handler با user_id =====
 // ============================================================
 add_action('wp_ajax_lp_save_panel', 'lp_save_panel_ajax');
 function lp_save_panel_ajax() {
     check_ajax_referer('lp_panel', 'nonce');
+
+    session_start();
+    $user_id = intval($_SESSION['user_id'] ?? 0);
+    if ($user_id === 0) {
+        wp_send_json_error('دسترسی غیرمجاز');
+    }
 
     $general = $_POST['general'] ?? [];
     $current_match = intval($general['current_match'] ?? 1);
@@ -344,15 +394,16 @@ function lp_save_panel_ajax() {
     // ===== ۱. پردازش تیم‌ها =====
     if (isset($_POST['teams'])) {
         $teams = $_POST['teams'];
-        $old_teams = get_option('lp_teams', []);
+        $all_teams = get_option('lp_teams', []);
         $new_teams = [];
 
-        foreach ($teams as $index => $t) {
-            $old_team = $old_teams[$index] ?? [];
-            $matches = $old_team['matches'] ?? [];
+        // حذف تیم‌های قدیمی این کاربر
+        $all_teams = array_filter($all_teams, function($t) use ($user_id) {
+            return intval($t['user_id'] ?? 0) !== $user_id;
+        });
 
-            // ===== اگر data-matches در پنل وجود دارد، از آن استفاده کن =====
-            // اینجا به‌روزرسانی ساده انجام می‌شود
+        foreach ($teams as $t) {
+            $matches = [];
             $km_value = intval($t['km'] ?? 0);
             $plc_value = intval($t['plc'] ?? 0);
             $matches[$current_match] = [
@@ -361,6 +412,7 @@ function lp_save_panel_ajax() {
             ];
 
             $new_teams[] = [
+                'user_id' => $user_id,
                 'active' => intval($t['active'] ?? 0),
                 'color' => sanitize_hex_color($t['color'] ?? '#ff9800'),
                 'win' => intval($t['win'] ?? 0),
@@ -371,38 +423,50 @@ function lp_save_panel_ajax() {
                 'matches' => $matches
             ];
         }
-        update_option('lp_teams', $new_teams);
+
+        $all_teams = array_merge($all_teams, $new_teams);
+        update_option('lp_teams', $all_teams);
     }
 
     // ===== ۲. ذخیره general =====
     if (isset($_POST['general'])) {
-        update_option('lp_general', $_POST['general']);
+        $all_general = get_option('lp_general', []);
+        $all_general = array_filter($all_general, function($g) use ($user_id) {
+            return intval($g['user_id'] ?? 0) !== $user_id;
+        });
+        $general = $_POST['general'];
+        $general['user_id'] = $user_id;
+        $all_general[] = $general;
+        update_option('lp_general', $all_general);
     }
 
     // ===== ۳. ذخیره match_rows =====
     if (isset($_POST['match_rows'])) {
+        $all_match_winner_rows = get_option('lp_match_winner_rows', []);
+        $all_match_winner_rows = array_filter($all_match_winner_rows, function($m) use ($user_id) {
+            return intval($m['user_id'] ?? 0) !== $user_id;
+        });
         $rows = [];
         foreach ($_POST['match_rows'] as $key => $val) {
             $match_num = str_replace('match_row_', '', $key);
             $rows[intval($match_num)] = intval($val);
         }
-        update_option('lp_match_winner_rows', $rows);
+        $rows['user_id'] = $user_id;
+        $all_match_winner_rows[] = $rows;
+        update_option('lp_match_winner_rows', $all_match_winner_rows);
     }
 
     // ============================================================
-    // ===== ۴. Invalidate کش =====
+    // ===== Invalidate کش =====
     // ============================================================
     $cache_dir = plugin_dir_path(__FILE__) . 'cache';
-    $cache_file = $cache_dir . '/api.json';
-    
-    // ۴-۱: حذف فایل کش قدیمی
+    $cache_file = $cache_dir . '/api_' . $user_id . '.json';
     if (file_exists($cache_file)) {
         unlink($cache_file);
     }
     
-    // ۴-۲: تولید کش جدید (اختیاری - برای کاهش تأخیر اولین کاربر)
     if (function_exists('wp_remote_get')) {
-        wp_remote_get(plugin_dir_url(__FILE__) . 'api.php', array(
+        wp_remote_get(plugin_dir_url(__FILE__) . 'api.php?user_id=' . $user_id, array(
             'timeout' => 1,
             'blocking' => false
         ));

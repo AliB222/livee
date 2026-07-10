@@ -1,16 +1,26 @@
 <?php
 /**
- * API Endpoint با کش JSON و پشتیبانی از داده‌های قدیمی
+ * API Endpoint با کش JSON و پشتیبانی از user_id
  */
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ============================================================
+// ===== دریافت user_id =====
+// ============================================================
+$user_id = intval($_GET['user_id'] ?? 0);
+if ($user_id === 0) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['error' => 'user_id الزامی است']);
+    exit;
+}
+
+// ============================================================
 // ===== کش =====
 // ============================================================
 $cache_dir = __DIR__ . '/cache';
-$cache_file = $cache_dir . '/api.json';
+$cache_file = $cache_dir . '/api_' . $user_id . '.json';
 $cache_duration = 1.5;
 
 if (!is_dir($cache_dir)) {
@@ -42,53 +52,59 @@ if (!function_exists('get_option')) {
     die('خطا: وردپرس به درستی بارگذاری نشد.');
 }
 
-// دریافت داده‌ها
-$teams_data = get_option('lp_teams', []);
-$general_data = get_option('lp_general', []);
+// ============================================================
+// ===== دریافت داده‌ها =====
+// ============================================================
+$all_teams = get_option('lp_teams', []);
+$teams_data = array_filter($all_teams, function($t) use ($user_id) {
+    return intval($t['user_id'] ?? 0) === $user_id;
+});
+$teams_data = array_values($teams_data);
+
+$all_general = get_option('lp_general', []);
+$general_temp = array_filter($all_general, function($g) use ($user_id) {
+    return intval($g['user_id'] ?? 0) === $user_id;
+});
+$general_data = reset($general_temp) ?: [];
 
 // ============================================================
-// ===== Fallback: تبدیل داده‌های قدیمی به جدید =====
+// ===== مهاجرت خودکار داده‌های قدیمی =====
 // ============================================================
 $converted = false;
 foreach ($teams_data as $index => $t) {
-    // اگر داده جدید است (matches وجود دارد) → ادامه
-    if (isset($t['matches']) && is_array($t['matches'])) {
+    if (isset($t['matches']) && is_array($t['matches']) && !empty($t['matches'])) {
         continue;
     }
-    
-    // داده قدیمی است → تبدیل کن
     $converted = true;
     $matches = [];
-    for ($i = 1; $i <= 5; $i++) {
-        $matches[$i] = [
-            'km' => intval($t['km' . $i] ?? 0),
-            'plc' => intval($t['plc'] ?? 0) // PLC در نسخه جدید باید جداگانه ذخیره شود
-        ];
-    }
-    // اگر plc قدیمی وجود داشت، به مچ‌ها اضافه کن
-    if (isset($t['plc'])) {
-        $plc_value = intval($t['plc']);
+    if (isset($t['km1']) || isset($t['km2']) || isset($t['km3']) || isset($t['km4']) || isset($t['km5'])) {
         for ($i = 1; $i <= 5; $i++) {
-            $matches[$i]['plc'] = $plc_value;
+            $matches[$i] = [
+                'km' => intval($t['km' . $i] ?? 0),
+                'plc' => intval($t['plc'] ?? 0)
+            ];
+        }
+    } else {
+        for ($i = 1; $i <= 5; $i++) {
+            $matches[$i] = ['km' => 0, 'plc' => 0];
         }
     }
-    
     $teams_data[$index]['matches'] = $matches;
-    
-    // حذف کلیدهای قدیمی (اختیاری)
     for ($i = 1; $i <= 5; $i++) {
         unset($teams_data[$index]['km' . $i]);
     }
-    // plc قدیمی را نگه می‌داریم تا پنل قدیمی هم کار کند
 }
 
-// اگر داده تبدیل شده، آن را ذخیره کن
 if ($converted) {
-    update_option('lp_teams', $teams_data);
+    $all_teams = array_filter($all_teams, function($t) use ($user_id) {
+        return intval($t['user_id'] ?? 0) !== $user_id;
+    });
+    $all_teams = array_merge($all_teams, $teams_data);
+    update_option('lp_teams', $all_teams);
 }
 
 // ============================================================
-// ===== اضافه کردن آدرس لوگو به general =====
+// ===== اضافه کردن آدرس لوگو =====
 // ============================================================
 $org_logo_id = $general_data['org_logo_id'] ?? 0;
 $org_logo_url = '';
@@ -98,7 +114,7 @@ if ($org_logo_id) {
 }
 $general_data['org_logo_url'] = $org_logo_url;
 $general_data['promoted_teams'] = intval($general_data['promoted_teams'] ?? 0);
-$general_data['timestamp'] = time(); // ← اضافه شده برای چک هوشمند
+$general_data['timestamp'] = time();
 
 // ============================================================
 // ===== دریافت شماره مچ =====
@@ -109,6 +125,7 @@ if ($match < 1 || $match > 5) $match = 1;
 if (empty($teams_data)) {
     $output = ['teams' => [], 'general' => $general_data];
     $json_output = json_encode($output, JSON_UNESCAPED_UNICODE);
+    file_put_contents($cache_file, $json_output, LOCK_EX);
     header('Content-Type: application/json; charset=utf-8');
     echo $json_output;
     exit;
@@ -125,7 +142,6 @@ foreach ($teams_data as $t) {
     $km = intval($matches[$match]['km'] ?? 0);
     $plc = intval($matches[$match]['plc'] ?? 0);
     
-    // محاسبه total
     $total_km = 0;
     $total_plc = 0;
     for ($i = 1; $i <= 5; $i++) {
@@ -176,7 +192,7 @@ usort($output, function ($a, $b) {
 // ===== ذخیره در کش و خروجی =====
 // ============================================================
 $json_output = json_encode(['teams' => $output, 'general' => $general_data], JSON_UNESCAPED_UNICODE);
-file_put_contents($cache_file, $json_output);
+file_put_contents($cache_file, $json_output, LOCK_EX);
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate');
