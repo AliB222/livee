@@ -1,27 +1,24 @@
 <?php
 /**
- * API Endpoint با کش فایل JSON - بهینه‌شده برای سرعت بالا
+ * API Endpoint با کش JSON و پشتیبانی از داده‌های قدیمی
  */
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ============================================================
-// ===== ۱. بررسی کش =====
+// ===== کش =====
 // ============================================================
 $cache_dir = __DIR__ . '/cache';
 $cache_file = $cache_dir . '/api.json';
-$cache_duration = 1.5; // ۱.۵ ثانیه
+$cache_duration = 1.5;
 
-// اگر پوشه کش وجود ندارد، بساز
 if (!is_dir($cache_dir)) {
     mkdir($cache_dir, 0755, true);
-    // فایل .htaccess برای محافظت از پوشه
     file_put_contents($cache_dir . '/.htaccess', 'Order Deny,Allow' . "\n" . 'Deny from all');
     file_put_contents($cache_dir . '/index.php', '<?php // Silence is golden');
 }
 
-// ===== بررسی کش =====
 if (file_exists($cache_file) && (time() - filemtime($cache_file) < $cache_duration)) {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-cache, no-store, must-revalidate');
@@ -33,7 +30,7 @@ if (file_exists($cache_file) && (time() - filemtime($cache_file) < $cache_durati
 }
 
 // ============================================================
-// ===== ۲. تولید داده جدید =====
+// ===== لود وردپرس =====
 // ============================================================
 $wp_load_path = dirname(__DIR__, 3) . '/wp-load.php';
 if (!file_exists($wp_load_path)) {
@@ -49,7 +46,50 @@ if (!function_exists('get_option')) {
 $teams_data = get_option('lp_teams', []);
 $general_data = get_option('lp_general', []);
 
-// اضافه کردن آدرس لوگو به general
+// ============================================================
+// ===== Fallback: تبدیل داده‌های قدیمی به جدید =====
+// ============================================================
+$converted = false;
+foreach ($teams_data as $index => $t) {
+    // اگر داده جدید است (matches وجود دارد) → ادامه
+    if (isset($t['matches']) && is_array($t['matches'])) {
+        continue;
+    }
+    
+    // داده قدیمی است → تبدیل کن
+    $converted = true;
+    $matches = [];
+    for ($i = 1; $i <= 5; $i++) {
+        $matches[$i] = [
+            'km' => intval($t['km' . $i] ?? 0),
+            'plc' => intval($t['plc'] ?? 0) // PLC در نسخه جدید باید جداگانه ذخیره شود
+        ];
+    }
+    // اگر plc قدیمی وجود داشت، به مچ‌ها اضافه کن
+    if (isset($t['plc'])) {
+        $plc_value = intval($t['plc']);
+        for ($i = 1; $i <= 5; $i++) {
+            $matches[$i]['plc'] = $plc_value;
+        }
+    }
+    
+    $teams_data[$index]['matches'] = $matches;
+    
+    // حذف کلیدهای قدیمی (اختیاری)
+    for ($i = 1; $i <= 5; $i++) {
+        unset($teams_data[$index]['km' . $i]);
+    }
+    // plc قدیمی را نگه می‌داریم تا پنل قدیمی هم کار کند
+}
+
+// اگر داده تبدیل شده، آن را ذخیره کن
+if ($converted) {
+    update_option('lp_teams', $teams_data);
+}
+
+// ============================================================
+// ===== اضافه کردن آدرس لوگو به general =====
+// ============================================================
 $org_logo_id = $general_data['org_logo_id'] ?? 0;
 $org_logo_url = '';
 if ($org_logo_id) {
@@ -58,8 +98,11 @@ if ($org_logo_id) {
 }
 $general_data['org_logo_url'] = $org_logo_url;
 $general_data['promoted_teams'] = intval($general_data['promoted_teams'] ?? 0);
+$general_data['timestamp'] = time(); // ← اضافه شده برای چک هوشمند
 
-// دریافت شماره مچ
+// ============================================================
+// ===== دریافت شماره مچ =====
+// ============================================================
 $match = intval($general_data['current_match'] ?? 1);
 if ($match < 1 || $match > 5) $match = 1;
 
@@ -71,7 +114,9 @@ if (empty($teams_data)) {
     exit;
 }
 
-// تبدیل به فرمت خروجی
+// ============================================================
+// ===== تبدیل به فرمت خروجی =====
+// ============================================================
 $output = [];
 $pos = 0;
 foreach ($teams_data as $t) {
@@ -128,12 +173,11 @@ usort($output, function ($a, $b) {
 });
 
 // ============================================================
-// ===== ۳. ذخیره در کش و خروجی =====
+// ===== ذخیره در کش و خروجی =====
 // ============================================================
 $json_output = json_encode(['teams' => $output, 'general' => $general_data], JSON_UNESCAPED_UNICODE);
 file_put_contents($cache_file, $json_output);
 
-// هدرها
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');

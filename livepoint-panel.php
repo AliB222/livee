@@ -331,7 +331,7 @@ function lp_panel_page() {
 }
 
 // ============================================================
-// ===== AJAX Handler =====
+// ===== AJAX Handler با Invalidation کش =====
 // ============================================================
 add_action('wp_ajax_lp_save_panel', 'lp_save_panel_ajax');
 function lp_save_panel_ajax() {
@@ -341,7 +341,7 @@ function lp_save_panel_ajax() {
     $current_match = intval($general['current_match'] ?? 1);
     if ($current_match < 1 || $current_match > 5) $current_match = 1;
 
-    // پردازش تیم‌ها
+    // ===== ۱. پردازش تیم‌ها =====
     if (isset($_POST['teams'])) {
         $teams = $_POST['teams'];
         $old_teams = get_option('lp_teams', []);
@@ -351,6 +351,8 @@ function lp_save_panel_ajax() {
             $old_team = $old_teams[$index] ?? [];
             $matches = $old_team['matches'] ?? [];
 
+            // ===== اگر data-matches در پنل وجود دارد، از آن استفاده کن =====
+            // اینجا به‌روزرسانی ساده انجام می‌شود
             $km_value = intval($t['km'] ?? 0);
             $plc_value = intval($t['plc'] ?? 0);
             $matches[$current_match] = [
@@ -372,10 +374,12 @@ function lp_save_panel_ajax() {
         update_option('lp_teams', $new_teams);
     }
 
+    // ===== ۲. ذخیره general =====
     if (isset($_POST['general'])) {
         update_option('lp_general', $_POST['general']);
     }
 
+    // ===== ۳. ذخیره match_rows =====
     if (isset($_POST['match_rows'])) {
         $rows = [];
         foreach ($_POST['match_rows'] as $key => $val) {
@@ -386,15 +390,17 @@ function lp_save_panel_ajax() {
     }
 
     // ============================================================
-    // ===== Invalidate کش بعد از ذخیره =====
+    // ===== ۴. Invalidate کش =====
     // ============================================================
     $cache_dir = plugin_dir_path(__FILE__) . 'cache';
     $cache_file = $cache_dir . '/api.json';
+    
+    // ۴-۱: حذف فایل کش قدیمی
     if (file_exists($cache_file)) {
         unlink($cache_file);
     }
     
-    // (اختیاری) تولید فایل کش جدید با درخواست غیرمسدود
+    // ۴-۲: تولید کش جدید (اختیاری - برای کاهش تأخیر اولین کاربر)
     if (function_exists('wp_remote_get')) {
         wp_remote_get(plugin_dir_url(__FILE__) . 'api.php', array(
             'timeout' => 1,
